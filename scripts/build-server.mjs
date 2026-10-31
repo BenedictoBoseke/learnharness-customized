@@ -53,7 +53,7 @@ if (exists(leakedData)) {
 // the 2026-10-08 payload audit; excluded in next.config.ts — this guard
 // makes a regression loud instead of silent).
 const subscriptionSecrets = fs.readdirSync(STANDALONE).filter((name) => /^(chatgpt|github-copilot|xai)-credentials\.json/.test(name));
-for (const secret of ["auth.json", ...subscriptionSecrets, ".env", ".env.local"]) {
+for (const secret of ["auth.json", "learnharness-sync-auth.json", "document-grants.json", ...subscriptionSecrets, ".env", ".env.local"]) {
 	if (exists(path.join(STANDALONE, secret))) {
 		console.error(`[build-server] REFUSING: standalone contains ${secret} — dev secrets would ship in the app.`);
 		console.error("             Check outputFileTracingExcludes in next.config.ts.");
@@ -69,7 +69,7 @@ for (const secret of ["auth.json", ...subscriptionSecrets, ".env", ".env.local"]
 // generic dist/** earlier broke pi-ai / pi-agent-core's runtime dist/.
 // Never touch ROOT/dist or ROOT/node_modules/electron (the running app
 // and the build runtime); native canvas/resvg packages stay untouched.
-for (const extra of ["dist", path.join("node_modules", "electron")]) {
+for (const extra of ["dist", "android", ".runtime-cache", path.join("node_modules", "electron")]) {
 	const target = path.join(STANDALONE, extra);
 	if (exists(target)) {
 		fs.rmSync(target, { recursive: true, force: true });

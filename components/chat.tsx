@@ -1,4 +1,5 @@
 "use client";
+import {LinkedDocumentsButton} from "@/components/linked-documents";
 
 import { createContext, Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useChatSession } from "@/components/session";
@@ -1379,6 +1380,7 @@ export function Chat({
 					{/* Practice (owner, 2026-10-04): the coverage ring hides —
 				    practice never extracts, so an ever-filling ring with no
 				    run behind it would lie. */}
+					<LinkedDocumentsButton chatId={chatId} />
 					{kind !== "practice" && <CoverageRing chatId={chatId} refreshKey={coverageTick} />}
 					{/* Practice sessions: no phase arc — a quiet Practice tag
 					    instead of the phase chip. */}

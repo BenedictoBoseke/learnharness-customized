@@ -52,7 +52,12 @@ const nextConfig: NextConfig = {
 	outputFileTracingExcludes: {
 		"*": [
 			"**/data/**/*",
+			"android/**/*",
+			"mobile/**/*",
+			".runtime-cache/**/*",
 			"auth.json",
+			"learnharness-sync-auth.json",
+			"document-grants.json",
 			"chatgpt-credentials.json*",
 			"github-copilot-credentials.json*",
 			"xai-credentials.json*",

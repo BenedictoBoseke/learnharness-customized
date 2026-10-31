@@ -54,7 +54,8 @@ export function FilePathDropZone({ children, className }: { children: React.Reac
 				if (depth.current === 0) setDragging(false);
 			}}
 			onDragEnd={clearDrag}
-			onDrop={(event) => {
+			onDrop={async(event) => {
+				const dropZone=event.currentTarget;
 				if (!hasFiles(event)) return;
 				event.preventDefault();
 				event.stopPropagation();
@@ -78,8 +79,9 @@ export function FilePathDropZone({ children, className }: { children: React.Reac
 					setNotice("No local file paths were available. Drop existing files from your computer.");
 					return;
 				}
+				try{const registration=await fetch("/api/sync",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({op:"register-files",paths})});if(!registration.ok){setNotice("The files could not be registered. Retry the drop.");return;}}catch{setNotice("The local app is unavailable. Retry the drop.");return;}
 				const focused = document.activeElement?.closest<HTMLElement>("[data-file-path-input]");
-				if (focused && event.currentTarget.contains(focused)) {
+				if (focused && dropZone.contains(focused)) {
 					focused.dispatchEvent(new CustomEvent(INSERT_FILE_PATHS_EVENT, { detail: paths }));
 				} else if (!appendToPrimaryInput(paths.map(quoteFilePath).join(" "))) {
 					setNotice("Open a chat to attach file paths.");

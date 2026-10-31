@@ -41,6 +41,7 @@ const EXCLUDED_DIR_NAMES = new Set(["node_modules", ".git", "Library", ".Trash"]
  *  `~/` is the home directory, as a shell would expand it — learners and
  *  models write paths that way. `~user` is not expanded. */
 export function resolveSourcePath(p?: string): string {
+	if(p?.startsWith("lh-unbound://")||p?.startsWith("lh-file://"))throw new Error("This file belongs to another device. Relink it or synchronize its attachment before reading.");
 	if (!p) return os.homedir();
 	if (p === "~" || p.startsWith("~/") || p.startsWith(`~${path.sep}`)) return path.join(os.homedir(), p.slice(1));
 	return path.isAbsolute(p) ? p : path.join(os.homedir(), p);
