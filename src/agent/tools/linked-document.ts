@@ -35,7 +35,10 @@ export function linkedDocumentTools(
       execute: serverExecute(
         "read_linked_document",
         read,
-        ({ documentId, offset }) => port.read(documentId, offset),
+        // The shared tool wrapper treats objects with a `text` property as
+        // plain text output. Serialize explicitly to retain ID/revision.
+        async ({ documentId, offset }) =>
+          JSON.stringify(await port.read(documentId, offset)),
       ),
     },
     {

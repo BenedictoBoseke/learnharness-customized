@@ -6,6 +6,7 @@ import path from "node:path";
 import { DocumentService } from "../src/store/documents.ts";
 import { atomicWrite } from "../src/store/atomic-json.ts";
 import { liveDocumentBlocks } from "../src/core/documents/live-markdown.ts";
+import { linkedDocumentTools } from "../src/agent/tools/linked-document.ts";
 import type { ChatRecord } from "../src/core/contracts.ts";
 import type { LhMessage } from "../src/core/native-messages.ts";
 function fixture(
@@ -83,6 +84,25 @@ const assistant = (id: string, content: unknown[]): LhMessage =>
     stopReason: "stop",
     timestamp: 2,
   }) as never;
+test("the native agent read tool preserves the note identity and revision alongside its text", async () => {
+  const expected = {
+    documentId: "doc_fixture",
+    revision: "a".repeat(64),
+    text: "Existing learning material.",
+  };
+  const [read] = linkedDocumentTools({
+    read: async () => expected,
+    propose: async () => {
+      throw Error("Read must not edit");
+    },
+  });
+  const result = await read!.execute("read_fixture", {});
+  const text = result.content
+    .filter((p) => p.type === "text")
+    .map((p) => p.text)
+    .join("");
+  assert.deepEqual(JSON.parse(text), expected);
+});
 test(
   "linking and live logging update the same original file, retain frontmatter/EOL and resume idempotently",
   fixture(async ({ service, file, root, chat, link }) => {
