@@ -62,6 +62,7 @@ if(op==='launch'){
    phoneBrowser=await puppeteer.connect({browserURL:'http://127.0.0.1:'+cdpForward,defaultViewport:null});
    const phonePage=(await phoneBrowser.pages()).find(p=>p.url().startsWith('http://127.0.0.1:'+info.port));assert.ok(phonePage,'Actual Android app WebView');
    await phonePage.goto('http://127.0.0.1:'+info.port+'/chat/'+c.id,{waitUntil:'networkidle2',timeout:60000});
+   if(await phonePage.$('[aria-label="Close sidebar"]'))await phonePage.click('[aria-label="Close sidebar"]');
    await phonePage.waitForFunction(()=>document.body.innerText.includes('What is their covariance?'));
    assert.ok(!(await phonePage.$eval('body',e=>e.innerText)).includes('Hidden until answered'));
    await phonePage.screenshot({path:path.join(root,'android-synced-session.png')});
