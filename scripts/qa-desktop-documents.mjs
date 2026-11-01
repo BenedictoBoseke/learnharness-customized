@@ -6,7 +6,7 @@ import http from 'node:http';
 import puppeteer from 'puppeteer-core';
 const root=path.resolve(process.env.LH_QA_ROOT||'../../desktop-document-qa');
 fs.mkdirSync(root,{recursive:true});
-const profile=path.join(root,'profile'),note=path.join(root,'existing.md');
+const profile=path.join(root,'profile-'+crypto.randomUUID()),note=path.join(root,'existing.md');
 fs.mkdirSync(profile,{recursive:true});
 const initial='---\r\ntitle: Existing note\r\n---\r\n\r\nA paragraph written by a person.\r\n';
 fs.writeFileSync(note,initial);
@@ -37,6 +37,10 @@ try{
  await page.evaluate(()=>document.querySelector('[data-testid="link-markdown"]').click());
  await page.waitForFunction(async(chatId)=>{const b=await (await fetch('/api/documents')).json();return b.documents?.some(d=>d.chatIds.includes(chatId));},{},chat.id);
  const docs=await api('/api/documents');const id=docs.documents.find(d=>d.chatIds.includes(chat.id)).id;
+ const selectedAgain=await page.evaluate(()=>window.lh.documents.pick());
+ const relinked=await api('/api/documents',{op:'link',chatId:chat.id,...selectedAgain,mode:'app'});
+ assert.equal(relinked.id,id,'Repeated native selection retains the same logical note');
+ assert.equal((await api('/api/documents')).documents.filter(d=>d.chatIds.includes(chat.id)).length,1);
  const chatFile=path.join(profile,'data/chats',chat.id+'.json');const record=JSON.parse(fs.readFileSync(chatFile));
  record.messages=[{role:'user',id:'qa_user',content:'Explain independent errors.',timestamp:1},{role:'assistant',id:'qa_teacher',content:[{type:'text',text:'Independent errors have zero covariance.'}],api:'openai-completions',provider:'qa',model:'qa',stopReason:'stop',timestamp:2,usage:{input:0,output:0,totalTokens:0,cost:{input:0,output:0,total:0}}}];
  fs.writeFileSync(chatFile,JSON.stringify(record));
@@ -52,7 +56,7 @@ try{
  fs.appendFileSync(note,'\r\nAn annotation from another editor.\r\n');
  await api('/api/documents',{op:'backfill',chatId:chat.id});assert.match(fs.readFileSync(note,'utf8'),/An annotation from another editor/);
  let modelCalls=0;
- mock=http.createServer(async(req,res)=>{try{
+ mock=http.createServer(async(req,res)=>{req.on('error',()=>{});res.on('error',()=>{});try{
   if(req.url==='/v1/models'){res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({data:[{id:'note-fixture',context_window:8192,max_tokens:1024}]}));return;}
   assert.equal(req.url,'/v1/chat/completions');let raw='';for await(const chunk of req)raw+=chunk;const body=JSON.parse(raw);modelCalls++;
   assert.ok(body.tools.some(t=>t.function.name==='read_linked_document'));assert.ok(body.tools.some(t=>t.function.name==='propose_document_edit'));
@@ -69,11 +73,11 @@ try{
  await api('/api/settings/graph',{enabled:false},'PUT');
  await api('/api/chats/'+chat.id+'/settings',{model:{provider:'custom',id:'note-fixture'}},'PUT');
  const turn=await page.evaluate(async(chatId)=>{const r=await fetch('/api/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({chatId,input:{type:'text',text:'Please clarify the original introduction in my linked note.'}})});return {status:r.status,text:await r.text()};},chat.id);
- assert.equal(turn.status,200,turn.text.slice(0,500));assert.equal(modelCalls,3);
- let pending;for(let i=0;i<60;i++){const view=await api('/api/documents?id='+id);pending=view.document.proposals.find(p=>p.status==='pending'&&p.reason.includes('Learner requested'));if(pending&&view.text.includes('A proposed edit is ready'))break;await new Promise(r=>setTimeout(r,100));}
- assert.ok(pending,'Real agent created a reviewable edit');assert.match(fs.readFileSync(note,'utf8'),/A paragraph written by a person/);
- await api('/api/documents',{op:'review',documentId:id,proposalId:pending.id,action:'apply'});assert.match(fs.readFileSync(note,'utf8'),/A paragraph revised by the learning agent/);
- await api('/api/documents',{op:'review',documentId:id,proposalId:pending.id,action:'undo'});assert.match(fs.readFileSync(note,'utf8'),/A paragraph written by a person/);
+ assert.equal(turn.status,200,turn.text.slice(0,500));let settled;for(let i=0;i<150;i++){settled=await api('/api/chats/'+chat.id);if(modelCalls>=3&&!settled.turnInFlight)break;await new Promise(r=>setTimeout(r,100));}assert.equal(modelCalls,3,JSON.stringify({turnError:settled?.turnError}));
+ let pendingEdit;for(let i=0;i<60;i++){const view=await api('/api/documents?id='+id);pendingEdit=view.document.proposals.find(p=>p.status==='pending'&&p.reason.includes('Learner requested'));if(pendingEdit&&view.text.includes('A proposed edit is ready'))break;await new Promise(r=>setTimeout(r,100));}
+ assert.ok(pendingEdit,'Real agent created a reviewable edit');assert.match(fs.readFileSync(note,'utf8'),/A paragraph written by a person/);
+ await api('/api/documents',{op:'review',documentId:id,proposalId:pendingEdit.id,action:'apply'});assert.match(fs.readFileSync(note,'utf8'),/A paragraph revised by the learning agent/);
+ await api('/api/documents',{op:'review',documentId:id,proposalId:pendingEdit.id,action:'undo'});assert.match(fs.readFileSync(note,'utf8'),/A paragraph written by a person/);
  // A hidden BrowserWindow does not paint on all Windows GPU drivers.
  assert.deepEqual(errors,[]);
  fs.writeFileSync(path.join(root,'result.json'),JSON.stringify({passed:['packaged Electron startup','trusted native picker IPC','existing original note preserved','visible lesson logging','idempotent backfill','proposal/apply/undo on original file','external annotation survives','real teacher agent reads linked note and proposes scoped edit','live logging preserves agent proposal Apply and Undo','no renderer errors'],paidModelCalls:0},null,2));

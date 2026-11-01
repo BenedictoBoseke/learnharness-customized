@@ -700,7 +700,7 @@ async function main() {
         const file=fs.realpathSync(result.filePaths[0]);if(!fs.statSync(file).isFile()||fs.statSync(file).size>(kind==="attachment"?64:5)*1024*1024)throw new Error("Choose a Markdown note up to 5 MB");
         let writable=true;try{fs.accessSync(file,fs.constants.W_OK);}catch{writable=false;}
         const grantsFile=path.join(path.dirname(AUTH_FILE()),"document-grants.json");fs.mkdirSync(path.dirname(grantsFile),{recursive:true});let grants={};if(fs.existsSync(grantsFile))grants=JSON.parse(fs.readFileSync(grantsFile,"utf8"));
-        const handle="grant_"+randomBytes(16).toString("hex");grants[handle]={path:file,name:path.basename(file),writable};const temporary=grantsFile+".tmp-"+randomBytes(8).toString("hex");fs.writeFileSync(temporary,JSON.stringify(grants),{mode:0o600});fs.renameSync(temporary,grantsFile);
+        const samePath=(a,b)=>process.platform==="win32"?a.toLowerCase()===b.toLowerCase():a===b;const handle=Object.keys(grants).find(key=>typeof grants[key]?.path==="string"&&samePath(grants[key].path,file))||"grant_"+randomBytes(16).toString("hex");grants[handle]={path:file,name:path.basename(file),writable};require("./atomic-file.cjs").atomicFile(grantsFile,JSON.stringify(grants));
         return {handle,name:path.basename(file),kind:"desktop",writable};
     });
 

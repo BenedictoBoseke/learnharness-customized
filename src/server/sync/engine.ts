@@ -179,7 +179,8 @@ export class SyncEngine {
       "Before changing sync connection",
       this.options.replica.capture(),
     );
-    this.save(empty());
+    const resumeRequired = this.state().resumeRequired;
+    this.save({ ...empty(), resumeRequired });
   }
   connectionFailed(message: string) {
     const s = this.state();

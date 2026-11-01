@@ -28,7 +28,7 @@ if(op==='launch'){
   const info=JSON.parse(adb('shell','run-as','ai.learnharness.mobile','cat','no_backup/runtime-info.json'));
   forward=adb('forward','tcp:0','tcp:'+info.port);
   const phone=(route,body,method)=>new Promise((resolve,reject)=>{
-   const r=http.request('http://127.0.0.1:'+forward+route,{method:method||(body?'POST':'GET'),headers:{host:'127.0.0.1:'+info.port,origin:'http://127.0.0.1:'+info.port,'x-learnharness-android':info.token,...(body?{'content-type':'application/json'}:{})},timeout:60000},res=>{const chunks=[];res.on('data',b=>chunks.push(b));res.on('end',()=>{try{const b=JSON.parse(Buffer.concat(chunks));res.statusCode<400?resolve(b):reject(Error(b.error||'Android API failed'));}catch(e){reject(e);}});});r.on('error',reject);r.on('timeout',()=>r.destroy(Error('Android API timed out')));r.end(body?JSON.stringify(body):undefined);
+   const r=http.request('http://127.0.0.1:'+forward+route,{agent:false,method:method||(body?'POST':'GET'),headers:{host:'127.0.0.1:'+info.port,origin:'http://127.0.0.1:'+info.port,'x-learnharness-android':info.token,...(body?{'content-type':'application/json'}:{})},timeout:60000},res=>{const chunks=[];res.on('data',b=>chunks.push(b));res.on('end',()=>{try{const b=JSON.parse(Buffer.concat(chunks));res.statusCode<400?resolve(b):reject(Error(b.error||'Android API failed'));}catch(e){reject(e);}});});r.on('error',reject);r.on('timeout',()=>r.destroy(Error('Android API timed out')));r.end(body?JSON.stringify(body):undefined);
   });
   const sync=(api,fields={})=>api('/api/sync',{op:'sync',...fields});
   if(op==='status'){

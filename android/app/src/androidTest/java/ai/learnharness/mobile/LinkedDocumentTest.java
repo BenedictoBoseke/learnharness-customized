@@ -47,6 +47,7 @@ public final class LinkedDocumentTest extends Instrumentation {
   if(phase.equals("first")){
    JSONObject chat=api("/api/chats",new JSONObject().put("title","SAF integration QA"));
    JSONObject pick=pick("existing.md");check(pick.optBoolean("persisted"),"SAF permission must be persisted");check(pick.optBoolean("writable"),"Writable grant");
+   check(pick.getString("handle").equals(pick("existing.md").getString("handle")),"Repeated picker selection retains the native document identity");
    JSONObject d=api("/api/documents",new JSONObject().put("op","link").put("chatId",chat.getString("id")).put("handle",pick.getString("handle")).put("kind","android").put("name",pick.getString("name")).put("writable",true).put("mode","app"));
    saved=new JSONObject().put("id",d.getString("id")).put("chatId",chat.getString("id"));Files.write(state.toPath(),saved.toString().getBytes(StandardCharsets.UTF_8));
    String before=original();check(before.contains("A paragraph written by a person."),"Original provider note read");

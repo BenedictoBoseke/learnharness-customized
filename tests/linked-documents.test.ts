@@ -125,6 +125,19 @@ test(
   }),
 );
 test(
+  "selecting the same native document again retains one logical note and logging identity",
+  fixture(async ({ service, file, chat, link }) => {
+    const first = await link();
+    await service.logSession(chat.id);
+    const before = fs.readFileSync(file, "utf8");
+    const again = await link();
+    assert.equal(again.id, first.id);
+    assert.equal(service.records().length, 1);
+    await service.logSession(chat.id);
+    assert.equal(fs.readFileSync(file, "utf8"), before);
+  }),
+);
+test(
   "external editor revisions invalidate stale proposals and are not overwritten",
   fixture(async ({ service, file, chat, link }) => {
     const d = await link(),

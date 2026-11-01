@@ -395,9 +395,21 @@ export class DocumentService {
     )
       throw new Error("Invalid document binding");
     safeId(input.handle);
+    const alreadyLinked = this.records().find((record) => {
+      const binding = this.binding(record.id);
+      return binding?.kind === input.kind && binding.handle === input.handle;
+    });
+    if (
+      input.documentId &&
+      alreadyLinked &&
+      alreadyLinked.id !== input.documentId
+    )
+      throw new Error(
+        "This file already belongs to another linked note. Select that note, or choose a different file.",
+      );
     const id = input.documentId
       ? safeId(input.documentId)
-      : "doc_" + crypto.randomUUID().replaceAll("-", "");
+      : alreadyLinked?.id || "doc_" + crypto.randomUUID().replaceAll("-", "");
     return this.lock(id, async () => {
       const binding: Binding = {
         documentId: id,
@@ -409,7 +421,8 @@ export class DocumentService {
       if (text.includes("\u0000"))
         throw new Error("Select a UTF-8 Markdown document.");
       const now = new Date().toISOString();
-      const existing = input.documentId ? this.record(id) : null;
+      const existing =
+        input.documentId || alreadyLinked ? this.record(id) : null;
       const d: DocumentRecord = existing || {
         version: 1,
         id,

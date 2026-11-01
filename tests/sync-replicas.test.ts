@@ -148,6 +148,12 @@ test(
     assert.equal((await b.engine.sync(cloud)).phase, "synced");
     assert.deepEqual(read(b), c);
     assert.equal(b.engine.requiresResume(c.id), true);
+    b.engine.detach();
+    assert.equal(
+      b.engine.requiresResume(c.id),
+      true,
+      "Leaving sync must not authorize an imported agent run",
+    );
     b.engine.resume(c.id);
     assert.equal(b.engine.requiresResume(c.id), false);
     assert.equal(cloud.revisions.length, 1);
