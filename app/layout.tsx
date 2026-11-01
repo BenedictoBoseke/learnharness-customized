@@ -1,3 +1,4 @@
+import {SubjectManager} from "@/components/subjects";
 import {LibraryLifecycle} from "@/components/library-lifecycle";
 import type { Metadata } from "next";
 import { JetBrains_Mono, Source_Sans_3 } from "next/font/google";
@@ -26,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 			{/* The notification channel rides OUTSIDE everything: sidebar, dock,
 				 and pages all subscribe as the polls retire (push S3, 2026-10-02). */}
 			<ServerEventsProvider>
-				<LibraryLifecycle />
+				<LibraryLifecycle /><SubjectManager />
 				<AppearanceProvider>
 					<SidebarProvider>
 						<ActivityProvider>

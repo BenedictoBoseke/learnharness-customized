@@ -56,3 +56,4 @@ export * from "./custom-provider.ts";
 export { customProviderGet, customProviderMutation } from "./custom-provider-http.ts";
 
 export {syncResponse,documentsResponse} from "./library-http.ts";
+export {subjectsResponse} from './subjects-http.ts';

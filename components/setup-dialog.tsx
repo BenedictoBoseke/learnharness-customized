@@ -179,7 +179,7 @@ export function SetupKeysBody({
 						</span>
 					</button>
 					{menuOpen && (
-						<MenuShell
+						<MenuShell onDismiss={onToggleMenu}
 							anchorRef={menuAnchor}
 							testid="setup-key-provider-menu"
 							preferredSide="down"
@@ -541,7 +541,7 @@ function OpenSetupDialog({ onClose, onDone }: SetupDialogProps) {
 											    ordering hazard. Live-caught by the owner 2026-10-09: every
 											    setup picker opened dead until a window resize. */}
 											{openMenu?.slot === slot && openMenu.kind === "model" && (
-												<MenuShell
+												<MenuShell onDismiss={()=>setOpenMenu(null)}
 													anchorTestid={`setup-trigger-${slot}`}
 													testid={`setup-menu-${slot}`}
 													preferredSide="down"
@@ -591,7 +591,7 @@ function OpenSetupDialog({ onClose, onDone }: SetupDialogProps) {
 												</span>
 											</button>
 											{openMenu?.slot === slot && openMenu.kind === "thinking" && (
-												<MenuShell
+												<MenuShell onDismiss={()=>setOpenMenu(null)}
 													anchorTestid={`setup-thinking-${slot}`}
 													testid={`setup-thinking-menu-${slot}`}
 													preferredSide="down"

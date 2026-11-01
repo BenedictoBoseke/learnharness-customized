@@ -4,6 +4,10 @@ import { createHash } from "node:crypto";
 import { atomicWrite, readJson } from "./atomic-json.ts";
 import { parseFilePaths } from "../core/file-paths.ts";
 import { validateManifest, type SyncManifest } from "../core/sync/types.ts";
+import {
+  portableSubject,
+  externalSubjectTranscript,
+} from "../core/subject-sync.ts";
 export const bytesHash = (bytes: Uint8Array | string) =>
   createHash("sha256").update(bytes).digest("hex");
 const CHUNK = 4 * 1024 * 1024;
@@ -83,6 +87,22 @@ export class LibraryReplica {
     } else if (managed) binding.managed = true;
     this.saveMap(map);
     return binding;
+  }
+  permitsSourceRead(file: string) {
+    try {
+      const canonical = fs.realpathSync(file);
+      return (
+        fs.statSync(canonical).isFile() &&
+        Object.values(this.fileMap()).some(
+          (b) =>
+            b.path &&
+            fs.existsSync(b.path) &&
+            fs.realpathSync(b.path) === canonical,
+        )
+      );
+    } catch {
+      return false;
+    }
   }
   references() {
     return Object.values(this.fileMap()).map((b) => ({
@@ -278,6 +298,39 @@ export class LibraryReplica {
   capture(): SyncManifest {
     const entries: Record<string, string> = {},
       map = this.fileMap();
+    const workspaceDir = path.join(this.options.dataDir, "workspaces");
+    const workspaces = fs.existsSync(workspaceDir)
+      ? fs
+          .readdirSync(workspaceDir)
+          .filter((n) => n.endsWith(".json"))
+          .map((n) =>
+            portableSubject(
+              JSON.parse(fs.readFileSync(path.join(workspaceDir, n), "utf8")),
+            ),
+          )
+      : [];
+    const externalNoteIds = new Set<string>(),
+      externalChats = new Set<string>();
+    const docsDir = path.join(this.options.dataDir, "documents");
+    if (fs.existsSync(docsDir))
+      for (const name of fs
+        .readdirSync(docsDir)
+        .filter((n) => n.endsWith(".json"))) {
+        const d = JSON.parse(fs.readFileSync(path.join(docsDir, name), "utf8"));
+        if (d.mode === "external") {
+          externalNoteIds.add(d.id);
+          for (const chatId of d.chatIds || []) externalChats.add(chatId);
+        }
+      }
+    for (const w of workspaces)
+      if (w.mode === "external")
+        for (const chatId of w.chatIds) externalChats.add(chatId);
+    for (const w of workspaces) {
+      w.chatIds = w.chatIds.filter((id) =>
+        fs.existsSync(path.join(this.options.dataDir, "chats", id + ".json")),
+      );
+      entries["workspace/" + w.id] = this.objectEntry(portableSubject(w));
+    }
     for (const kind of ["chats", "jobs", "documents"]) {
       const dir = path.join(this.options.dataDir, kind);
       if (!fs.existsSync(dir)) continue;
@@ -288,6 +341,11 @@ export class LibraryReplica {
         if (!idOk(id)) throw new Error("Unexpected library file identity");
         let value = JSON.parse(fs.readFileSync(path.join(dir, name), "utf8"));
         if (kind === "chats") {
+          value = externalSubjectTranscript(
+            value,
+            externalNoteIds,
+            externalChats.has(value.id),
+          );
           if (
             value.id !== id ||
             !Array.isArray(value.messages) ||
@@ -402,7 +460,13 @@ export class LibraryReplica {
       });
     }
     this.saveMap(map);
-    return { version: 1, entries };
+    const upgraded =
+      workspaces.length > 0 ||
+      readJson<{ base?: { version: number } }>(
+        path.join(this.localDir, "state.json"),
+        {},
+      ).base?.version === 2;
+    return { version: upgraded ? 2 : 1, entries };
   }
   /** Checks every entity and constructs all target bytes before touching canonical records. */
   apply(candidate: SyncManifest): void {
@@ -489,7 +553,13 @@ export class LibraryReplica {
         }
         const [kind, id] = key.split("/");
         const dir =
-          kind === "chat" ? "chats" : kind === "job" ? "jobs" : "documents";
+          kind === "chat"
+            ? "chats"
+            : kind === "job"
+              ? "jobs"
+              : kind === "workspace"
+                ? "workspaces"
+                : "documents";
         if (value.id !== id)
           throw new Error("Library record identity mismatch");
         if (
@@ -503,6 +573,7 @@ export class LibraryReplica {
             throw new Error("A running job cannot be imported");
           if (!value.ownerDeviceId) value.ownerDeviceId = "foreign";
         }
+        if (kind === "workspace") value = portableSubject(value);
         if (kind === "document" && value.version !== 1)
           throw new Error("Unsupported linked document version");
         if (kind === "document" && value.external) {
@@ -530,6 +601,7 @@ export class LibraryReplica {
         ["chat", "chats"],
         ["job", "jobs"],
         ["document", "documents"],
+        ["workspace", "workspaces"],
       ] as const) {
         const parent = path.join(this.options.dataDir, dir);
         if (fs.existsSync(parent))
@@ -540,6 +612,29 @@ export class LibraryReplica {
             )
               changes.set(dir + "/" + name, null);
       }
+      for (const [key, hash] of Object.entries(manifest.entries))
+        if (key.startsWith("workspace/")) {
+          const workspace = portableSubject(
+            JSON.parse(this.getBlob(hash).toString("utf8")),
+          );
+          for (const note of workspace.notes) {
+            const hash = manifest.entries["document/" + note.id];
+            if (!hash)
+              throw Error(
+                "Subject note reference is missing from the incoming generation.",
+              );
+            const doc = JSON.parse(this.getBlob(hash).toString("utf8"));
+            if (doc.mode !== workspace.mode)
+              throw Error(
+                "Subject note sync ownership does not match its workspace.",
+              );
+          }
+          for (const chatId of workspace.chatIds)
+            if (!manifest.entries["chat/" + chatId])
+              throw Error(
+                "Subject session reference is missing from the incoming generation.",
+              );
+        }
       changes.set(".sync-local/files.json", Buffer.from(JSON.stringify(map)));
       const journal: Journal = {
         phase: "prepared",
@@ -578,7 +673,7 @@ export class LibraryReplica {
     if (name === ".sync-local/files.json")
       return path.join(this.localDir, "files.json");
     if (
-      !/^(chats|jobs|documents)\/[A-Za-z0-9_-]+\.json$/.test(name) &&
+      !/^(chats|jobs|documents|workspaces)\/[A-Za-z0-9_-]+\.json$/.test(name) &&
       !(name.startsWith("graph/") && GRAPH_FILES.includes(name.slice(6))) &&
       name !== ".sync-local/files.json"
     )

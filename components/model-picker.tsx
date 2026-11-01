@@ -331,7 +331,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 			    settings' slot selects and the setup dialog use the exact same
 			    one. */}
 			{open === "model" && (
-				<MenuShell
+				<MenuShell onDismiss={()=>setOpen(null)}
 					anchorRef={containerRef}
 					testid="model-menu"
 					preferredSide="up"
@@ -355,7 +355,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 			)}
 
 			{open === "thinking" && (
-				<MenuShell
+				<MenuShell onDismiss={()=>setOpen(null)}
 					anchorRef={containerRef}
 					testid="thinking-menu"
 					preferredSide="up"

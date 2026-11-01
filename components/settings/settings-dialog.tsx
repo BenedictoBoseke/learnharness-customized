@@ -151,6 +151,7 @@ export function SettingsDialogBody({
 	const [error, setError] = useState<string | null>(null);
 	// MenuShell open-count — drives the content column's scroll lock.
 	const [openMenus, setOpenMenus] = useState(0);
+
 	const contentRef = useRef<HTMLDivElement | null>(null);
 	// Scroll-lock (fix wave, owner ruling: the scrollbar MAY stay,
 	// scrolling must NOT happen, nothing may move): the content column
@@ -182,6 +183,7 @@ export function SettingsDialogBody({
 		};
 	}, []);
 	const [active, setActive] = useState<SectionId>(initialSection);
+ useEffect(()=>{document.querySelector(`[data-testid="settings-nav-${active}"]`)?.scrollIntoView({block:'nearest',inline:'nearest'});},[active]);
 	// A deep-link fired while the dialog is ALREADY open (first exercised by
 	// the wave-6 embedding picker's "Add a provider key first…" link — the
 	// picker itself died with wave 7, the mechanism is general) changes

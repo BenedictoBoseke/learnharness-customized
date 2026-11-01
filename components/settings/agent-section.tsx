@@ -671,7 +671,7 @@ export function AgentSection({
 									onClick={() => setOpenMenu(thisMenuOpen === "cache" ? null : { target: slot, kind: "cache" })}
 									widthClass="w-40"
 								/>}
-								{advancedModels && thisMenuOpen === "cache" && <MenuShell
+								{advancedModels && thisMenuOpen === "cache" && <MenuShell onDismiss={()=>setOpenMenu(null)}
 									preferredSide="down"
 									anchorTestid={`slot-cache-${slot}`}
 									testid={`slot-cache-menu-${slot}`}
@@ -683,7 +683,7 @@ export function AgentSection({
 									}} />
 								</MenuShell>}
 								{thisMenuOpen === "model" && (
-									<MenuShell
+									<MenuShell onDismiss={()=>setOpenMenu(null)}
 										preferredSide="down"
 											anchorTestid={`slot-model-${slot}`}
 										testid={`slot-model-menu-${slot}`}
@@ -711,7 +711,7 @@ export function AgentSection({
 									</MenuShell>
 								)}
 								{thisMenuOpen === "thinking" && (
-									<MenuShell
+									<MenuShell onDismiss={()=>setOpenMenu(null)}
 										preferredSide="down"
 											anchorTestid={`slot-thinking-${slot}`}
 										testid={`slot-thinking-menu-${slot}`}
@@ -837,7 +837,7 @@ export function AgentSection({
 									disabled={!anyKey}
 								/>
 								{open && (
-									<MenuShell
+									<MenuShell onDismiss={()=>setOpenMenu(null)}
 										preferredSide="down"
 											anchorTestid="search-engine-trigger"
 										testid="search-engine-menu"

@@ -1,9 +1,10 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { SyncStatus, SyncInventory } from "@/src/core";
 import { useServerEvent, useServerResync } from "@/components/server-events";
 interface Status extends SyncStatus {
   signedIn?: boolean;
+  emailRetryAt?: number;
   fileReferences?: Array<{ id: string; name: string; bound: boolean }>;
   recoveries?: Array<{ id: string; name: string; createdAt: string }>;
 }
@@ -49,6 +50,8 @@ function Inventory({ label, value }: { label: string; value: SyncInventory }) {
   );
 }
 export function SyncSection() {
+  const sendingEmail = useRef(false);
+  const [now, setNow] = useState(Date.now());
   const [status, setStatus] = useState<Status>(),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -80,6 +83,10 @@ export function SyncSection() {
   useServerEvent("sync-changed", () => void load());
   useServerResync(() => void load());
   async function act(op: string, fields: Record<string, unknown> = {}) {
+    if (op === "request-code") {
+      if (sendingEmail.current) return null;
+      sendingEmail.current = true;
+    }
     setBusy(true);
     setError("");
     try {
@@ -94,6 +101,7 @@ export function SyncSection() {
       else await load();
       return b;
     } catch (e) {
+      if (op === "request-code") await load();
       setError(
         e instanceof Error
           ? e.message
@@ -101,6 +109,7 @@ export function SyncSection() {
       );
       return null;
     } finally {
+      if (op === "request-code") sendingEmail.current = false;
       setBusy(false);
     }
   }
@@ -110,6 +119,11 @@ export function SyncSection() {
         "libraries",
       ); /* Auth transitions fetch the account's library inventory once. */
   }, [status?.signedIn]);
+  useEffect(() => {
+    if (!status?.emailRetryAt || status.emailRetryAt <= Date.now()) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [status?.emailRetryAt]);
   return (
     <section className="space-y-4 px-6 py-5" data-testid="section-sync">
       <h2 className="text-sm uppercase tracking-widest">Progress sync</h2>
@@ -219,7 +233,22 @@ export function SyncSection() {
               onChange={(e) => setCode(e.target.value)}
             />
           </label>
-          <button className={button} disabled={busy}>
+          {status.emailRetryAt && status.emailRetryAt > now && (
+            <p role="status" className="text-sm">
+              The email server asks you to wait until{" "}
+              {new Date(status.emailRetryAt).toLocaleTimeString()}. An existing
+              unused link still works.
+            </p>
+          )}
+          <button
+            className={button}
+            disabled={
+              busy ||
+              (!code.trim() &&
+                !!status.emailRetryAt &&
+                status.emailRetryAt > now)
+            }
+          >
             {code.trim() ? "Sign in" : "Send sign-in email"}
           </button>
           <p className="text-xs text-muted-foreground">

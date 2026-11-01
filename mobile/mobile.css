@@ -1,6 +1,10 @@
 /* Platform layout only: original teaching, question, practice, graph, and settings UI remain intact. */
 html,body{overscroll-behavior:none;touch-action:pan-x pan-y}body{padding:0!important}button,input,select,textarea{-webkit-tap-highlight-color:transparent}input,textarea,[contenteditable=true]{font-size:max(16px,1em)}
 @media(max-width:700px){
+ [data-testid=top-bar]{height:auto;min-height:60px;flex-shrink:0;flex-wrap:wrap;gap:8px;padding-block:6px}
+ [data-testid=top-bar] button{min-height:48px;min-width:48px}
+ [data-testid=top-bar] .font-title{max-width:calc(100vw - 92px);font-size:24px;min-width:80px}
+ [data-testid=top-bar] [data-testid=subjects-open], [data-testid=top-bar] [data-testid=linked-documents-open]{white-space:normal;overflow-wrap:anywhere}
  .lh-lights-gutter{padding-left:12px!important}
  aside.sidebar-motion{position:fixed;left:0;top:0;bottom:0;z-index:35;background:var(--background);box-shadow:8px 0 30px #0005}
  aside.sidebar-motion.w-0{box-shadow:none;pointer-events:none}
@@ -19,3 +23,41 @@ html,body{overscroll-behavior:none;touch-action:pan-x pan-y}body{padding:0!impor
 /* Desktop executable discovery has no Android installation owner. */
 [data-testid=group-external-cli]{display:none!important}
 [data-testid=section-general]::after{content:"Android app updates are installed as APKs. Library backup and restore are available in the menu above.";display:block;margin-top:20px;font:13px/1.6 sans-serif;opacity:.75}
+
+/* Android touch surfaces, scoped to actual controls rather than every element. */
+html,body{min-width:0;max-width:100%;width:100%}
+[data-testid=stats-bar]{flex-wrap:wrap;justify-content:flex-start;gap:8px}
+[data-testid=stats-dictation-slot]{flex:0 0 auto;min-width:100px;max-width:100%}
+[data-testid=stats-bar] [data-testid=model-control]{min-width:0;max-width:100%;flex-wrap:wrap;margin-left:auto}
+[data-testid=stats-model]{min-width:48px;min-height:48px;max-width:calc(100vw - 96px);overflow-wrap:anywhere}
+[data-testid=stats-thinking], [data-testid=dictation-toggle], [data-testid=home-mode-teach], [data-testid=home-mode-practice], [data-testid=stats-summary]{min-width:48px;min-height:48px}
+.lh-dictation-idle{width:auto;min-width:100px;padding:8px}
+[data-lh-menu]{max-width:calc(100vw - 16px);overscroll-behavior:contain}
+[data-lh-menu] button{min-width:48px;min-height:48px;white-space:normal}
+[data-lh-menu] input{min-height:48px}
+[data-slot=button], [data-testid=settings-close], [data-testid=settings-content] button, [data-testid=settings-content] select, [data-testid=settings-content] input:not([type=checkbox]):not([type=radio]), [data-testid=linked-documents-dialog] button, [data-testid=linked-documents-dialog] select, .lh-subject-button{min-width:48px;min-height:48px}
+[data-testid=settings-content] [role=switch]{min-width:48px;min-height:48px}
+.lh-settings-row{flex-wrap:wrap;align-items:flex-start}.lh-settings-row>span:first-child{flex:1 1 150px}.lh-settings-row>div{max-width:100%;flex-wrap:wrap} [data-testid^=custom-pin-row]{flex-wrap:wrap}
+[data-testid=settings-nav]{scrollbar-width:thin;box-shadow:inset -12px 0 12px -12px var(--foreground)}
+[data-testid=settings-nav] button{scroll-margin-inline:12px}
+[data-testid=composer] button, [data-testid=practice-send], [data-testid=next-problem-button], [data-testid=subjects-open], [data-testid=linked-documents-open], [data-testid=resume-synced-session], [data-testid=import-notes], [data-testid=open-chain-table], [data-testid=new-session], [data-testid=new-session-practice], [data-testid=settings-entry], [data-testid^=kind-filter-], button[aria-label='Open sidebar'], button[aria-label='Close sidebar']{min-height:48px;min-width:48px}
+[data-testid=session-search]{min-height:48px}
+[data-testid=subjects-dialog] input[type=checkbox]{width:24px;height:24px;flex-shrink:0}
+[data-testid=subjects-dialog] input:not([type=checkbox]), [data-testid=subjects-dialog] select, [data-testid=subjects-dialog] textarea, [data-testid=question-dock] button, [data-testid=question-dock-bar], [data-testid=teach-check-reveal]{min-height:48px;min-width:48px}
+[data-testid=session-row], [data-testid=session-row-kbd], [data-testid=dictation-language], [data-testid=other-option]{min-height:48px;min-width:48px}
+.lh-subject-dialog{overscroll-behavior:contain}
+[data-testid=question-dock]{max-height:calc(100dvh - 16px);overflow-y:auto;overscroll-behavior:contain}
+[data-testid=question-dock]>form{position:sticky;bottom:0;background:var(--card);z-index:1}
+[data-testid=confidence-track], [data-testid=confidence-slider]{min-height:48px}
+/* A short landscape IME leaves room for the answer/send surface first. The
+   session and model toolbars return as soon as the keyboard is dismissed. */
+html[data-lh-compact-ime] [data-testid=top-bar], html[data-lh-compact-ime] [data-testid=stats-bar]{display:none}
+html[data-lh-compact-ime] [data-testid=composer]{max-height:calc(100dvh - 20px);overflow-y:auto}
+@media(max-width:700px){
+ .lh-subject-dialog{width:100%!important;height:100dvh!important;max-height:100dvh!important;border-radius:0}
+ [data-testid=stats-bar]{padding-inline:4px}
+ [data-testid=settings-content]{padding-bottom:24px}
+
+}
+
+@media(max-width:420px){.lh-settings-row>span:first-child{flex-basis:100%}}

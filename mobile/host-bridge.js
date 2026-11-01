@@ -24,6 +24,8 @@
     const picks=new Map();
     window.addEventListener?.('lh:document-picked',event=>{const entry=picks.get(event.detail?.requestId);if(!entry)return;picks.delete(event.detail.requestId);clearTimeout(entry.timer);entry.resolve(event.detail.document||null);});
     const previous = window.lh || {};
+    const directDismiss=()=>{const menu=window.document.querySelector('[data-lh-menu]');if(!menu)return false;menu.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));return !window.document.contains(menu);};
+    window.lhDismissMenu=directDismiss;
     window.lh = Object.freeze({
       ...previous,
       platform: 'android',

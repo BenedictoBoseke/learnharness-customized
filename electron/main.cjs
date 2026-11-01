@@ -695,12 +695,12 @@ async function main() {
     ipcMain.handle("lh:documents:pick",async(event,kind)=>{
         const win=BrowserWindow.fromWebContents(event.sender);
         if(!trustedAppWindows.has(win)||!trustedSender(event,new URL(url).origin,BrowserWindow))throw new Error("Untrusted document request");
-        const result=await dialog.showOpenDialog(win,{title:"Link an existing Markdown note",properties:["openFile"],filters:kind==="attachment"?[{name:"Attachment",extensions:["*"]}]:[{name:"Markdown",extensions:["md","markdown"]}]});
+        const result=await dialog.showOpenDialog(win,{title:kind==="folder"?"Link a subject folder":"Link an existing Markdown note",properties:[kind==="folder"?"openDirectory":"openFile"],filters:kind==="folder"?[]:kind==="attachment"?[{name:"Attachment",extensions:["*"]}]:[{name:"Markdown",extensions:["md","markdown"]}]});
         if(result.canceled||result.filePaths.length!==1)return null;
-        const file=fs.realpathSync(result.filePaths[0]);if(!fs.statSync(file).isFile()||fs.statSync(file).size>(kind==="attachment"?64:5)*1024*1024)throw new Error("Choose a Markdown note up to 5 MB");
+        const file=fs.realpathSync(result.filePaths[0]);if(kind==="folder"?!fs.statSync(file).isDirectory():(!fs.statSync(file).isFile()||fs.statSync(file).size>(kind==="attachment"?64:5)*1024*1024))throw new Error("Choose a Markdown note up to 5 MB");
         let writable=true;try{fs.accessSync(file,fs.constants.W_OK);}catch{writable=false;}
         const grantsFile=path.join(path.dirname(AUTH_FILE()),"document-grants.json");fs.mkdirSync(path.dirname(grantsFile),{recursive:true});let grants={};if(fs.existsSync(grantsFile))grants=JSON.parse(fs.readFileSync(grantsFile,"utf8"));
-        const samePath=(a,b)=>process.platform==="win32"?a.toLowerCase()===b.toLowerCase():a===b;const handle=Object.keys(grants).find(key=>typeof grants[key]?.path==="string"&&samePath(grants[key].path,file))||"grant_"+randomBytes(16).toString("hex");grants[handle]={path:file,name:path.basename(file),writable};require("./atomic-file.cjs").atomicFile(grantsFile,JSON.stringify(grants));
+        const samePath=(a,b)=>process.platform==="win32"?a.toLowerCase()===b.toLowerCase():a===b;const handle=Object.keys(grants).find(key=>typeof grants[key]?.path==="string"&&samePath(grants[key].path,file))||"grant_"+randomBytes(16).toString("hex");const pickedStat=fs.statSync(file);grants[handle]={path:file,name:path.basename(file),writable,...(kind==="folder"?{directory:true,identity:`${pickedStat.dev}:${pickedStat.ino}`}:{})};require("./atomic-file.cjs").atomicFile(grantsFile,JSON.stringify(grants));
         return {handle,name:path.basename(file),kind:"desktop",writable};
     });
 

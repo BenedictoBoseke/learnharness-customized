@@ -90,3 +90,4 @@ export * from "./session-markdown.ts";
 
 export * from "./sync/types.ts";
 export * from "./documents/types.ts";
+export * from './subjects.ts';

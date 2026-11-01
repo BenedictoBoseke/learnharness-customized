@@ -66,6 +66,73 @@ class Cloud implements SyncTransport {
     return structuredClone(r);
   }
 }
+test(
+  "v2 subject metadata conflicts preserve both offline candidates across restart and explicit resolution",
+  fixture(async (root) => {
+    const a = device(root, "pc"),
+      b = device(root, "android"),
+      cloud = new Cloud();
+    const filename = (d: { dataDir: string }) =>
+      path.join(d.dataDir, "workspaces/ws_chinese.json");
+    const subject = {
+      version: 1,
+      id: "ws_chinese",
+      name: "Chinese",
+      mode: "external",
+      notes: [],
+      roles: { sources: [] },
+      exclusions: [],
+      chatIds: [],
+      logging: false,
+      updatedAt: "2026-11-01",
+    };
+    atomicWrite(filename(a), JSON.stringify(subject));
+    await a.engine.sync(cloud);
+    await b.engine.sync(cloud);
+    atomicWrite(
+      filename(a),
+      JSON.stringify({ ...subject, name: "PC Chinese" }),
+    );
+    atomicWrite(
+      filename(b),
+      JSON.stringify({ ...subject, name: "Phone Chinese" }),
+    );
+    await a.engine.sync(cloud);
+    assert.equal((await b.engine.sync(cloud)).phase, "conflict");
+    assert.equal(
+      JSON.parse(fs.readFileSync(filename(b), "utf8")).name,
+      "Phone Chinese",
+    );
+    const restarted = {
+      ...b,
+      engine: new SyncEngine({
+        replica: b.replica,
+        deviceId: "android",
+        deviceName: "android",
+        isBusy: () => false,
+      }),
+    };
+    assert.equal((await restarted.engine.sync(cloud)).phase, "conflict");
+    const recovery = restarted.engine
+      .recoveries()
+      .find((r) => r.name === "Local conflict candidate")!;
+    assert.ok(recovery);
+    assert.equal(
+      (await restarted.engine.sync(cloud, { resolution: "remote" })).phase,
+      "synced",
+    );
+    assert.equal(
+      JSON.parse(fs.readFileSync(filename(b), "utf8")).name,
+      "PC Chinese",
+    );
+    await restarted.engine.restoreRecovery(recovery.id);
+    assert.equal(
+      JSON.parse(fs.readFileSync(filename(b), "utf8")).name,
+      "Phone Chinese",
+    );
+    assert.equal(restarted.replica.capture().version, 2);
+  }),
+);
 function fixture(fn: (root: string) => Promise<void>) {
   return async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "lh-sync-"));

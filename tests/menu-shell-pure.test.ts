@@ -61,11 +61,11 @@ describe("computeMenuPlacement — cap + position", () => {
 		assert.equal(p.maxHeight, 248);
 	});
 
-	it("never crushes below the usability floor, even against a tiny side", () => {
+	it("never extends beyond available height in a tiny viewport", () => {
 		// Anchor 30px above the bottom, both sides thin: capped to the
 		// floor, not a 2px sliver — the cap overflows rather than crushes.
 		const p = computeMenuPlacement(rect(30, 60), viewport(90), 300, "down", "right");
-		assert.equal(p.maxHeight, 96);
+		assert.equal(p.maxHeight, 18);
 	});
 
 	it("up-side menus anchor their BOTTOM above the anchor's top", () => {

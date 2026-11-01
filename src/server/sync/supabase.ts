@@ -18,6 +18,7 @@ interface Config {
   projectUrl: string;
   publishableKey: string;
   boundUserId?: string;
+  emailRetryAt?: number;
   session?: Session;
 }
 interface RevisionRow {
@@ -29,6 +30,7 @@ interface RevisionRow {
   created_at: string;
 }
 export class SupabaseConnection {
+  private sendingEmail = false;
   constructor(
     private file: string,
     private fetcher: typeof fetch = fetch,
@@ -71,7 +73,11 @@ export class SupabaseConnection {
       projectUrl: u.origin,
       publishableKey,
       ...(old?.projectUrl === u.origin && old.publishableKey === publishableKey
-        ? { session: old.session, boundUserId: old.boundUserId }
+        ? {
+            session: old.session,
+            boundUserId: old.boundUserId,
+            emailRetryAt: old.emailRetryAt,
+          }
         : {}),
     });
   }
@@ -79,6 +85,7 @@ export class SupabaseConnection {
     const c = this.config();
     return {
       configured: Boolean(c),
+      emailRetryAt: c?.emailRetryAt,
       projectUrl: c?.projectUrl,
       email: c?.session?.email,
       signedIn: Boolean(c?.session),
@@ -120,10 +127,37 @@ export class SupabaseConnection {
       } catch (e) {
         if (e instanceof RevisionConflictError) throw e;
       }
-      if (path === "/auth/v1/otp" && r.status === 429)
-        throw new Error(
-          "Supabase is limiting sign-in email requests. Paste an unused sign-in link already in your inbox, or wait before requesting another email.",
+      if (
+        path === "/rest/v1/rpc/lh_sync_commit" &&
+        message.includes("Invalid manifest")
+      )
+        throw Error(
+          "The sync server rejected this library format. Install the subject-workspaces SQL migration and update both devices before syncing subjects.",
         );
+      if (path === "/auth/v1/otp" && r.status === 429) {
+        const retry = r.headers.get("retry-after");
+        if (retry) {
+          const deadline = /^\d+$/.test(retry)
+            ? Date.now() + Number(retry) * 1000
+            : Date.parse(retry);
+          if (
+            Number.isFinite(deadline) &&
+            deadline > Date.now() &&
+            deadline < Date.now() + 86400000
+          ) {
+            c.emailRetryAt = deadline;
+            this.save(c);
+          }
+        }
+        throw Error(
+          "Supabase is limiting sign-in email requests. Paste an unused sign-in link already in your inbox, or wait before requesting another email." +
+            (c.emailRetryAt && c.emailRetryAt > Date.now()
+              ? " The server asks you to wait until " +
+                new Date(c.emailRetryAt).toISOString() +
+                "."
+              : ""),
+        );
+      }
       if (
         path.startsWith("/auth/v1/verify") &&
         [400, 401, 403].includes(r.status)
@@ -167,13 +201,25 @@ export class SupabaseConnection {
     return r;
   }
   async requestCode(email: string) {
+    if (this.sendingEmail)
+      throw Error("A sign-in email request is already in progress.");
+    const retry = this.config()?.emailRetryAt;
+    if (retry && retry > Date.now())
+      throw Error(
+        "Supabase asks you to wait before requesting another email. An existing unused sign-in link can still be verified.",
+      );
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254)
       throw new Error("Enter your email address.");
-    await this.request("/auth/v1/otp", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email, create_user: true }),
-    });
+    this.sendingEmail = true;
+    try {
+      await this.request("/auth/v1/otp", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, create_user: true }),
+      });
+    } finally {
+      this.sendingEmail = false;
+    }
   }
   private storeSession(data: Record<string, any>) {
     if (

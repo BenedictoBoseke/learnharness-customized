@@ -1200,6 +1200,7 @@ export function Chat({
 		void syncFromServer();
 	});
 
+ useEffect(()=>{const insert=(event:Event)=>{const detail=(event as CustomEvent).detail;if(detail?.chatId!==chatId||typeof detail?.text!=='string')return;applyText(textRef.current?textRef.current+'\n\n'+detail.text:detail.text);composerInputRef.current?.focus();};window.addEventListener('lh:subject-draft',insert);return()=>window.removeEventListener('lh:subject-draft',insert);},[chatId,applyText]);
 	const onSend = () => {
 		if (pending || compacting) return;
 		/* FINISH DICTATION FIRST (owner, 2026-10-01): a learner who keeps

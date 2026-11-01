@@ -18,6 +18,8 @@
 
 LearnHarness uses AI agents to plan and teach lessons from your current understanding to your goal. It builds a detailed picture of what you understand and how you reason. That picture is updated as you learn.
 
+This customized Windows/Android fork also supports subject folders, reviewed edits to original Markdown notes, and private learning-progress sync. See the [subject-folder setup guide](docs/subject-folders.md), [validation results and limits](docs/subject-folders-validation.md), and [existing sync/linked-note guide](docs/sync-linked-markdown.md). Subject sync requires the additive database migration and updated apps on both devices.
+
 Instead of just giving you an explanation, it uses your answers and thinking to decide what you need next. Teaching builds understanding one reasoning step at a time. Practice makes it usable. A persistent knowledge graph carries it across sessions.
 
 ![LearnHarness teaching session](docs/assets/teaching-session.png)

@@ -1498,7 +1498,7 @@ export function GraphView({
 			    placement, focus, arrow cycling; the dismissal effect above owns
 			    the contract). */}
 			{ctxNode !== null && (
-				<MenuShell
+				<MenuShell onDismiss={()=>setCtxNode(null)}
 					anchorRef={ctxAnchorRef}
 					testid="node-context-menu"
 					preferredSide="down"
