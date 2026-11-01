@@ -1,3 +1,4 @@
+import {noteLibraryMutation} from "./sync-state.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -28,6 +29,7 @@ export const sourceOrganizationStore: SourceOrganizationStore = {
 			fs.writeFileSync(tmp, JSON.stringify(valid, null, "\t") + "\n", "utf8");
 			fs.renameSync(tmp, SOURCE_ORGANIZATION_FILE);
 		} finally { fs.rmSync(tmp, { force: true }); }
+		noteLibraryMutation();
 		emit("sources-changed", {});
 	},
 };

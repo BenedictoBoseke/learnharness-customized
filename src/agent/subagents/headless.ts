@@ -73,7 +73,7 @@ export interface HeadlessApi {
 export const headlessOverride: { current?: HeadlessApi } = {};
 
 export function getHeadless(): HeadlessApi {
-	return headlessOverride.current ?? realHeadless;
+	return (globalThis as typeof globalThis & {__lhAndroidHeadless?:HeadlessApi}).__lhAndroidHeadless ?? headlessOverride.current ?? realHeadless;
 }
 
 // ─── Chrome resolution ───────────────────────────────────────────────────────

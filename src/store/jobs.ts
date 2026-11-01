@@ -1,3 +1,4 @@
+import {deviceIdentity,noteLibraryMutation} from "./sync-state.ts";
 /**
  * JobStore — the fs JSON adapter: one file per background sub-agent job in
  * data/jobs/ (contracts.ts "THE ASYNC PROTOCOL"). Keyed by toolCallId for
@@ -31,6 +32,7 @@ function jobFile(id: string): string {
 function createJob(init: CreateJobInit): JobRecord {
 	const now = new Date().toISOString();
 	const record: JobRecord = {
+		ownerDeviceId: process.env.NODE_ENV==="test"?undefined:deviceIdentity().id,
 		id: `job_${Date.now().toString(36)}_${crypto.randomUUID().slice(0, 8)}`,
 		kind: init.kind,
 		chatId: init.chatId,
@@ -43,6 +45,7 @@ function createJob(init: CreateJobInit): JobRecord {
 	};
 	fs.mkdirSync(JOBS_DIR, { recursive: true });
 	fs.writeFileSync(jobFile(record.id), JSON.stringify(record, null, "\t"), "utf-8");
+	noteLibraryMutation();
 	emit("jobs-changed", { chatId: init.chatId });
 	return record;
 }
@@ -66,6 +69,7 @@ function updateJob(id: string, patch: JobPatch): JobRecord | null {
 	// EVERY write, not just status flips: progress-line updates must reach
 	// the dispatch cards (the view debounces the fetch bursts). A missing id
 	// wrote nothing and stays silent.
+	if(next.status!=="running")noteLibraryMutation();
 	emit("jobs-changed", { chatId: next.chatId });
 	return next;
 }
@@ -106,7 +110,7 @@ function deleteJobsForChat(chatId: string): number {
 	}
 	// Only when something actually died — a zero-file delete wrote nothing
 	// (the endTurn present-entry law).
-	if (removed > 0) emit("jobs-changed", { chatId });
+	if (removed > 0) {noteLibraryMutation();emit("jobs-changed", { chatId });}
 	return removed;
 }
 

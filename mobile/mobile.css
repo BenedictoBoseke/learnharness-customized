@@ -1,0 +1,21 @@
+/* Platform layout only: original teaching, question, practice, graph, and settings UI remain intact. */
+html,body{overscroll-behavior:none;touch-action:pan-x pan-y}body{padding:0!important}button,input,select,textarea{-webkit-tap-highlight-color:transparent}input,textarea,[contenteditable=true]{font-size:max(16px,1em)}
+@media(max-width:700px){
+ .lh-lights-gutter{padding-left:12px!important}
+ aside.sidebar-motion{position:fixed;left:0;top:0;bottom:0;z-index:35;background:var(--background);box-shadow:8px 0 30px #0005}
+ aside.sidebar-motion.w-0{box-shadow:none;pointer-events:none}
+ [data-testid=settings-dialog]{width:100vw!important;height:100dvh!important;max-width:100vw!important;max-height:100dvh!important;border-radius:0!important}
+ [data-testid=settings-dialog]>div.flex{flex-direction:column}
+ [data-testid=settings-nav]{width:100%!important;flex-direction:row!important;overflow-x:auto;flex-shrink:0;border-right:0!important;border-bottom:1px solid var(--border)}
+ [data-testid=settings-nav]>button{white-space:nowrap;min-height:44px;padding:10px 14px!important}
+ [data-testid=settings-content]{flex:1;overflow-y:auto}
+ [role=dialog]{max-width:calc(100vw - 16px)}
+ .font-title{overflow-wrap:anywhere}
+ .katex-display{overflow-x:auto;overflow-y:hidden;max-width:100%}
+ pre{max-width:100%;overflow:auto}
+ [data-testid=setup-dialog]{width:calc(100vw - 16px)!important;max-height:92dvh;overflow:auto}
+}
+
+/* Desktop executable discovery has no Android installation owner. */
+[data-testid=group-external-cli]{display:none!important}
+[data-testid=section-general]::after{content:"Android app updates are installed as APKs. Library backup and restore are available in the menu above.";display:block;margin-top:20px;font:13px/1.6 sans-serif;opacity:.75}

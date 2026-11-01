@@ -145,3 +145,6 @@ export const PROMPTS_OVERRIDE_DIR = path.join(DATA_ROOT, "prompts");
 export const AUTH_FILE = process.env.LH_AUTH_FILE
 	? path.resolve(process.env.LH_AUTH_FILE)
 	: path.join(ROOT, "auth.json");
+
+/** Device identity, bindings and sync receipts are never part of a library. */
+export const LOCAL_STATE_DIR = process.env.LH_LOCAL_STATE_DIR ? path.resolve(process.env.LH_LOCAL_STATE_DIR) : path.join(PATHS.data,".local");

@@ -24,7 +24,7 @@
  *     would shadow every settings-page key change until restart.
  */
 
-const { app, BrowserWindow, Menu, ipcMain, session, shell } = require("electron");
+const { app, BrowserWindow, Menu, ipcMain, session, shell, dialog } = require("electron");
 const { createChatGPT, fileStore } = require("./chatgpt.cjs");
 const { attachChatGPTChild, trustedSender, chatGPTControl } = require("./chatgpt-ipc.cjs");
 const { createSubscriptions, loadSubscriptionSDK } = require("./subscriptions.cjs");
@@ -116,6 +116,9 @@ if (process.argv.includes("--browser-service")) {
 	if (process.env.LH_DEV_URL) {
 		app.setPath("userData", `${app.getPath("userData")}-dev`);
 	}
+
+	// Explicit isolated profiles support development and acceptance tests without touching a live library.
+	if(process.env.LH_PROFILE_DIR)app.setPath("userData",path.resolve(process.env.LH_PROFILE_DIR));
 
 	// The whole normal boot — lock included — lives in this else: a helper is
 	// a SECOND instance of this very binary on purpose (the running app owns
@@ -220,6 +223,7 @@ function startServer(port) {
 					// (no env injection anymore: a spawn-time copy would shadow every
 					// settings-page key change until restart; env wins over file).
 					LH_AUTH_FILE: AUTH_FILE(),
+					LH_LOCAL_STATE_DIR: path.join(app.getPath("userData"),"device-state"),
 					LH_DESKTOP_SERVER: "1",
 					LH_DESKTOP_API_SECRET: desktopAPISecret,
 				},
@@ -389,7 +393,7 @@ function createWindow(url) {
 		event.preventDefault();
 	});
 
-	win.once("ready-to-show", () => win.show());
+	win.once("ready-to-show", () => {if(process.env.LH_HEADLESS!=="1")win.show();});
 	return win;
 }
 
@@ -504,6 +508,7 @@ function installUpdateNow() {
 }
 
 function setupAutoUpdater() {
+	if(!process.env.LH_UPDATE_FEED){reportUpdateStatus("disabled");return;} // Customized builds require an explicitly configured fork feed.
 	if (!app.isPackaged) {
 		log("auto-update: dev build — updater disabled");
 		reportUpdateStatus("disabled");
@@ -687,6 +692,18 @@ async function main() {
 
 	// Renderer controls contain no token/URL/code operation. The separate server
 	// child is the only recipient of credential leases over inherited IPC.
+    ipcMain.handle("lh:documents:pick",async(event,kind)=>{
+        const win=BrowserWindow.fromWebContents(event.sender);
+        if(!trustedAppWindows.has(win)||!trustedSender(event,new URL(url).origin,BrowserWindow))throw new Error("Untrusted document request");
+        const result=await dialog.showOpenDialog(win,{title:"Link an existing Markdown note",properties:["openFile"],filters:kind==="attachment"?[{name:"Attachment",extensions:["*"]}]:[{name:"Markdown",extensions:["md","markdown"]}]});
+        if(result.canceled||result.filePaths.length!==1)return null;
+        const file=fs.realpathSync(result.filePaths[0]);if(!fs.statSync(file).isFile()||fs.statSync(file).size>(kind==="attachment"?64:5)*1024*1024)throw new Error("Choose a Markdown note up to 5 MB");
+        let writable=true;try{fs.accessSync(file,fs.constants.W_OK);}catch{writable=false;}
+        const grantsFile=path.join(path.dirname(AUTH_FILE()),"document-grants.json");fs.mkdirSync(path.dirname(grantsFile),{recursive:true});let grants={};if(fs.existsSync(grantsFile))grants=JSON.parse(fs.readFileSync(grantsFile,"utf8"));
+        const samePath=(a,b)=>process.platform==="win32"?a.toLowerCase()===b.toLowerCase():a===b;const handle=Object.keys(grants).find(key=>typeof grants[key]?.path==="string"&&samePath(grants[key].path,file))||"grant_"+randomBytes(16).toString("hex");grants[handle]={path:file,name:path.basename(file),writable};require("./atomic-file.cjs").atomicFile(grantsFile,JSON.stringify(grants));
+        return {handle,name:path.basename(file),kind:"desktop",writable};
+    });
+
 	ipcMain.handle("lh:chatgpt:control", async (event, command) => {
 		if (!trustedAppWindows.has(BrowserWindow.fromWebContents(event.sender)) || !trustedSender(event, new URL(url).origin, BrowserWindow)) return { error: "Untrusted desktop request." };
 		if (!chatgpt || !serverProcess?.connected) return { available: false, pending: false, activeId: null, accounts: [], error: "ChatGPT sign-in requires the desktop app's private server connection. Browser-only and externally launched development servers keep API-key connections." };

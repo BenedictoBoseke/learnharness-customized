@@ -1,4 +1,5 @@
 "use client";
+import {SyncSection} from "./sync-section.tsx";
 /**
  * THE SETTINGS DIALOG (settings-app wave, 2026-09-20): the thin settings
  * page graduated into the designed surface — a centered modal over
@@ -63,6 +64,7 @@ const SECTIONS = [
 	{ id: "graph", label: "Graph" },
 	{ id: "keyboard", label: "Keyboard", hint: "Stored on this device" },
 	{ id: "general", label: "General" },
+	{ id: "sync", label: "Sync" },
 ] as const;
 type SectionId = (typeof SECTIONS)[number]["id"];
 
@@ -355,6 +357,7 @@ export function SettingsDialogBody({
 						</p>
 					) : (
 						<div>
+							{active === "sync" && <SyncSection />}
 							{active === "general" && (
 								<SettingsSection
 									title="General"

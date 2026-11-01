@@ -1,3 +1,4 @@
+import {noteLibraryMutation} from "./sync-state.ts";
 /**
  * GraphStore — the fs JSONL adapter: the append-only ledgers at
  * config.LEDGER_FILES (contracts.ts "v1 emission").
@@ -54,6 +55,7 @@ function appendLine<T>(file: string, record: T): void {
 	fs.mkdirSync(path.dirname(file), { recursive: true });
 	ensureGraphFormat(); // the lazy format stamp (graph-format.ts)
 	fs.appendFileSync(file, `${JSON.stringify(record)}\n`, "utf-8");
+	noteLibraryMutation();
 }
 
 function readRawLines(file: string): unknown[] {
@@ -236,6 +238,7 @@ export const graphStore: GraphStore = {
 				const body = records.map((record) => JSON.stringify(record)).join("\n") + (records.length > 0 ? "\n" : "");
 				fs.writeFileSync(tmp, body, "utf-8");
 				fs.renameSync(tmp, file);
+				noteLibraryMutation();
 			} catch (err) {
 				try {
 					fs.unlinkSync(tmp);
@@ -322,6 +325,7 @@ function writeSourceMap(map: Record<string, NotesSource>): void {
 	fs.mkdirSync(path.dirname(SOURCES_FILE), { recursive: true });
 	ensureGraphFormat(); // the lazy format stamp (graph-format.ts)
 	fs.writeFileSync(SOURCES_FILE, JSON.stringify(map, null, "\t"), "utf-8");
+	noteLibraryMutation();
 }
 
 // ─── one-way purges at adapter load: dead ledgers are exactly the confusion

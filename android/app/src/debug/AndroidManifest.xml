@@ -1,0 +1,8 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+ <application>
+  <!-- This exported component exists only in debug APKs. No Node or user-data
+       APIs are exposed; its renderer requires a per-launch secret retained in
+       the application's private no_backup directory. -->
+  <activity android:name=".RendererQaActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden"/>
+ </application>
+</manifest>

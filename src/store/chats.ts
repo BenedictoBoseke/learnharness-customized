@@ -1,3 +1,5 @@
+import {noteLibraryMutation} from "./sync-state.ts";
+import {atomicWrite} from "./atomic-json.ts";
 /**
  * ChatStore — the fs JSON adapter (one file per chat in data/chats/).
  *
@@ -55,7 +57,8 @@ function createChat(title: string, kind?: "practice"): ChatRecord {
  *  lazy migration means existing files only get stamped on their next write.
  *  A future-version guard lives on the read side (getChat). */
 function writeChat(record: ChatRecord): void {
-	fs.writeFileSync(chatFile(record.id), JSON.stringify({ ...record, version: CURRENT_CHAT_VERSION }, null, "\t"), "utf-8");
+	atomicWrite(chatFile(record.id), JSON.stringify({ ...record, version: CURRENT_CHAT_VERSION }, null, "\t"));
+	noteLibraryMutation();
 }
 
 function getChat(id: string): ChatRecord | null {
@@ -188,6 +191,7 @@ function renameChat(id: string, title: string): ChatRecord {
 function deleteChat(id: string): boolean {
 	try {
 		fs.unlinkSync(chatFile(id));
+		noteLibraryMutation();
 		emit("chats-changed", {}); // only a real removal — the present-entry law
 		return true;
 	} catch {

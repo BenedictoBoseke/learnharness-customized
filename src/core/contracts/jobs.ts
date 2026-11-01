@@ -16,6 +16,8 @@ export type JobKind = "research" | "demo" | "visual" | "pdf";
 export type JobStatus = "running" | "done" | "error";
 
 export interface JobRecord {
+	/** Execution remains owned by its origin device after synchronization. */
+	ownerDeviceId?: string;
 	id: string;
 	kind: JobKind;
 	chatId: string;

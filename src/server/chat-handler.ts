@@ -1,3 +1,4 @@
+import {documentToolsForSession,sessionResumeRequired} from "./library-services.ts";
 import type { Usage } from "@earendil-works/pi-ai";
 import {
 	createPracticeAgent,
@@ -196,6 +197,7 @@ export async function handleChatInput(
 	input: TurnInput,
 	buildAgent?: (opts: AgentBuildOptions & { teaching: boolean }) => TeachingAgent,
 ): Promise<Response> {
+	if(sessionResumeRequired(chatId))return Response.json({error:"This session arrived from another device. Choose Resume here before continuing.",code:"sync_resume_required"},{status:409});
 	let record = stores.chatStore.getChat(chatId);
 	if (!record) {
 		return Response.json({ error: "Unknown chat" }, { status: 404 });
@@ -440,7 +442,9 @@ export async function handleChatInput(
 		},
 		restoreAutomatic: (automaticIds, retainedIds) => restoreUncommittedAutomatic(chatId, constructed, automaticIds, retainedIds),
 	});
+	const noteTools=documentToolsForSession(chatId);
 	const agentOpts: AgentBuildOptions = {
+		...(noteTools?{documentTools:noteTools}:{}),
 		engine,
 		callPurpose,
 		requestCycle,

@@ -19,3 +19,17 @@ xai-credentials.json*
 
 # dev-fresh launcher scratch (fresh-user sim): disposable per launch
 .fresh-data/
+
+# Device-private sync credentials and native document grants
+learnharness-sync-auth.json
+document-grants.json
+# Android generated dependencies and outputs
+android/.gradle/
+android/**/build/
+android/**/.cxx/
+android/local.properties
+android/app/src/main/jniLibs/
+android/app/src/main/cpp/include/
+android/app/src/main/assets/server.zip
+android/app/src/main/assets/server.sha256
+.runtime-cache/

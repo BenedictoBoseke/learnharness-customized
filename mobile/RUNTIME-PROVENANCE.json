@@ -1,0 +1,33 @@
+{
+  "runtime": {
+    "name": "fogtape/nodejs-mobile",
+    "version": "24.22.1-0",
+    "status": "third-party prerelease",
+    "url": "https://github.com/fogtape/nodejs-mobile/releases/download/v24.22.1-0/nodejs-mobile-android-24.22.1-0.zip",
+    "sha256": "d6fd9f610fe5d81fede8f0d400c5a62723247725a19831835f15abf4f0604250",
+    "source": "https://github.com/fogtape/nodejs-mobile/tree/v24.22.1-0",
+    "upstreamNodeCommit": "ce7aaf1cee78b8cf0ce17364260535c418d3ed26",
+    "abi": [
+      "arm64-v8a",
+      "x86_64"
+    ]
+  },
+  "modifications": "Android native shell and mobile/ adapters preserve the application learning runtime. See docs/sync-linked-markdown.md for sync, document permissions, and compatibility.",
+  "originalPort": {
+    "name": "LearnHarness",
+    "version": "0.4.0",
+    "author": "Amos Blomqvist",
+    "source": "https://github.com/amosblomqvist/learnharness",
+    "artifact": "installed resources/server/standalone",
+    "asarSha256": "bed426a979e4d76a6991e8b7a51ab5b23b23aed7c07b2b22706ba683f880e8cc",
+    "license": "AGPL-3.0-only"
+  },
+  "application": {
+    "name": "LearnHarness customized",
+    "version": "0.4.1-custom.2",
+    "repository": "https://github.com/BenedictoBoseke/learnharness-customized",
+    "baseCommit": "e69e85269c064c6c9c49a8b06ae78c06e79c4a63",
+    "payload": "Built from this repository using Next standalone and scripts/package-android.py",
+    "license": "AGPL-3.0-only"
+  }
+}

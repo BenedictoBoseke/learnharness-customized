@@ -1,0 +1,8 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+ <instrumentation android:name="ai.learnharness.mobile.LinkedDocumentTest" android:targetPackage="ai.learnharness.mobile" android:label="Linked document integration"/>
+ <application>
+  <provider android:name="ai.learnharness.mobile.QADocumentsProvider" android:authorities="ai.learnharness.mobile.test.documents" android:exported="true" android:grantUriPermissions="true" android:permission="android.permission.MANAGE_DOCUMENTS" android:process=":documents">
+   <intent-filter><action android:name="android.content.action.DOCUMENTS_PROVIDER"/></intent-filter>
+  </provider>
+ </application>
+</manifest>
