@@ -20,7 +20,7 @@ import java.util.*;
 import java.util.zip.*;
 
 /** Exercises the actual Activity export/restore implementation with invented fixtures. */
-public final class LibraryRestoreTest extends RuntimeLifecycleTest {
+public class LibraryRestoreTest extends RuntimeLifecycleTest {
     private Context app;
     private MainActivity activity;
     private Method restore,addArchive;
