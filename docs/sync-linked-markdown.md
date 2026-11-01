@@ -1,6 +1,6 @@
 # Progress sync and linked Markdown
 
-This fork builds the desktop and Android apps from the same LearnHarness 0.4.1 source. The earlier Android 0.4.0 port supplies the native host and platform adapters; it is no longer a copied installed desktop bundle. Existing native chat and graph version-1 records remain authoritative and need no destructive migration. Unsupported future versions are refused. Android keeps the same application ID and upgrades version code 100 to 101 without clearing its library.
+This fork builds the desktop and Android apps from the same LearnHarness 0.4.1 source. The earlier Android 0.4.0 port supplies the native host and platform adapters; it is no longer a copied installed desktop bundle. Existing native chat and graph version-1 records remain authoritative and need no destructive migration. Unsupported future versions are refused. Android keeps the same application ID and upgrades version codes 100/101 to 102 without clearing its library.
 
 ## Setup and use
 
@@ -45,3 +45,5 @@ node scripts/qa-desktop-documents.mjs # packaged Windows app; isolated profile
 The separate Android test APK includes a DocumentsProvider and instrumented system-picker tests; none of these provider/debug components ship in the release app. Use the consolidated runner `ai.learnharness.mobile.test/ai.learnharness.mobile.LinkedDocumentTest` with `-e phase first`, force-stop the target, then rerun with `-e phase restart`. The `revoke` and `revoked` phases check cached-note recovery and explicit relinking across a process restart. The same runner dispatches the original runtime and library-restore tests with `-e suite lifecycle` and `-e suite restore`. These are restricted to disposable emulators.
 
 Provider subscriptions and model API credentials are independent of Supabase sign-in. A sync account error must never ask for a model API key. Initial and conflict choices include a per-device inventory with session counts/previews, note and attachment counts, graph nodes, and completed jobs. Existing BYOK, ChatGPT, Copilot, and other provider flows remain the original application code.
+
+The sign-in form accepts an existing link/code immediately, after sender errors, and after reopening Settings. Sending another email is not required to reveal verification. `scripts/qa-signin-recovery.mjs` covers this flow with simulated sender throttling and no actual mail.

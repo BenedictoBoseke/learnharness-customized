@@ -120,6 +120,10 @@ export class SupabaseConnection {
       } catch (e) {
         if (e instanceof RevisionConflictError) throw e;
       }
+      if (path === "/auth/v1/otp" && r.status === 429)
+        throw new Error(
+          "Supabase is limiting sign-in email requests. Paste an unused sign-in link already in your inbox, or wait before requesting another email.",
+        );
       if (
         path.startsWith("/auth/v1/verify") &&
         [400, 401, 403].includes(r.status)

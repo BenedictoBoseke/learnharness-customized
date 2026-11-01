@@ -24,7 +24,7 @@
   },
   "application": {
     "name": "LearnHarness customized",
-    "version": "0.4.1-custom.1",
+    "version": "0.4.1-custom.2",
     "repository": "https://github.com/BenedictoBoseke/learnharness-customized",
     "baseCommit": "e69e85269c064c6c9c49a8b06ae78c06e79c4a63",
     "payload": "Built from this repository using Next standalone and scripts/package-android.py",

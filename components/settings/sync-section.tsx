@@ -187,7 +187,7 @@ export function SyncSection() {
           className="space-y-3"
           onSubmit={async (e) => {
             e.preventDefault();
-            if (sent) {
+            if (code.trim()) {
               if (await act("verify-code", { email, code })) {
                 setCode("");
                 setSent(false);
@@ -207,39 +207,31 @@ export function SyncSection() {
               autoComplete="email"
             />
           </label>
-          {sent && (
-            <label className="block text-sm">
-              Email code or sign-in link
-              <input
-                className={input}
-                aria-label="Sync email code or sign-in link"
-                type="password"
-                autoComplete="one-time-code"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                required
-              />
-            </label>
-          )}
+          <label className="block text-sm">
+            Email code or sign-in link
+            <input
+              className={input}
+              aria-label="Sync email code or sign-in link"
+              type="password"
+              autoComplete="one-time-code"
+              placeholder="Paste an existing email link or code"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+            />
+          </label>
           <button className={button} disabled={busy}>
-            {sent ? "Sign in" : "Send sign-in email"}
+            {code.trim() ? "Sign in" : "Send sign-in email"}
           </button>
+          <p className="text-xs text-muted-foreground">
+            Already have a sign-in email? Copy its original link without opening
+            it and paste it above, or enter its code. You can use an unused link
+            even if sending another email is rate-limited. No localhost website
+            or custom email template is needed.
+          </p>
           {sent && (
-            <p className="text-xs text-muted-foreground">
-              Copy the sign-in link from the email without opening it, then
-              paste it here. If your email contains a code, enter that instead.
-              No localhost website or custom email template is needed.
+            <p role="status" className="text-xs text-muted-foreground">
+              Sign-in email requested. Check your inbox and spam folder.
             </p>
-          )}
-          {sent && (
-            <button
-              className={button}
-              type="button"
-              disabled={busy}
-              onClick={() => setSent(false)}
-            >
-              Use another email
-            </button>
           )}
         </form>
       )}

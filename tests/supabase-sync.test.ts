@@ -188,3 +188,20 @@ test(
     );
   }),
 );
+test(
+  "email throttling preserves project settings and explains existing-link recovery",
+  fixture(async (file) => {
+    const c = new SupabaseConnection(file, (async () =>
+      Response.json(
+        { msg: "email rate limit exceeded" },
+        { status: 429 },
+      )) as typeof fetch);
+    c.configure("https://fixture.supabase.co", "sb_publishable_fixture");
+    const before = fs.readFileSync(file, "utf8");
+    await assert.rejects(
+      c.requestCode(user.email),
+      /Paste an unused sign-in link/,
+    );
+    assert.equal(fs.readFileSync(file, "utf8"), before);
+  }),
+);

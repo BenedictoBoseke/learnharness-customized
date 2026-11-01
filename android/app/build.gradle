@@ -2,7 +2,7 @@ plugins { id 'com.android.application' }
 android {
  namespace 'ai.learnharness.mobile'
  compileSdk 36
- defaultConfig { applicationId 'ai.learnharness.mobile'; minSdk 26; targetSdk 36; versionCode 101; versionName '0.4.1-custom.1'; externalNativeBuild { cmake { cppFlags '-std=c++20'; arguments '-DANDROID_STL=c++_shared' } } }
+ defaultConfig { applicationId 'ai.learnharness.mobile'; minSdk 26; targetSdk 36; versionCode 102; versionName '0.4.1-custom.2'; externalNativeBuild { cmake { cppFlags '-std=c++20'; arguments '-DANDROID_STL=c++_shared' } } }
  buildFeatures { buildConfig true }
  ndkVersion '28.2.13676358'
  if(project.hasProperty('androidNdk')) ndkPath project.property('androidNdk')
