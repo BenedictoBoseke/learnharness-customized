@@ -131,7 +131,8 @@ public final class NativeRenderer {
             InputStream in = new BufferedInputStream(client.getInputStream());
             String first = line(in, 4096);
             boolean document = "POST /document HTTP/1.1".equals(first) || "POST /document HTTP/1.0".equals(first);
-            if (!document && !"POST /render HTTP/1.1".equals(first) && !"POST /render HTTP/1.0".equals(first)) {
+            boolean folder = first.startsWith("POST /folder HTTP/");
+            if (!document && !folder && !"POST /render HTTP/1.1".equals(first) && !"POST /render HTTP/1.0".equals(first)) {
                 reply(client, 404, failure(operation, "Unknown renderer operation")); return;
             }
             Map<String,String> headers = new HashMap<>(); int headerBytes = first.length();
@@ -156,6 +157,7 @@ public final class NativeRenderer {
             byte[] body = new byte[size]; int offset = 0;
             while (offset < size) { int count = in.read(body, offset, size-offset); if (count < 0) throw new IOException("Incomplete body"); offset += count; }
             JSONObject request = new JSONObject(new String(body, StandardCharsets.UTF_8));
+            if(folder){reply(client,200,FolderDocuments.request(context,request));return;}
             if(document){reply(client,200,documentRequest(request));return;}
             if (!(request.opt("version") instanceof Number) || ((Number)request.opt("version")).doubleValue() != 1) throw new IOException("Unsupported renderer version");
             operation = request.getString("operation"); JSONObject input = request.getJSONObject("input");
@@ -187,7 +189,7 @@ public final class NativeRenderer {
         if(!registry.isFile())throw new IOException("Document permission missing. Relink the note");
         JSONObject all=new JSONObject(new String(java.nio.file.Files.readAllBytes(registry.toPath()),StandardCharsets.UTF_8));
         JSONObject grant=all.optJSONObject(handle);if(grant==null)throw new IOException("Document permission missing. Relink the note");
-        Uri uri=Uri.parse(grant.getString("uri"));if(!"content".equals(uri.getScheme()))throw new IOException("Invalid document provider");
+        Uri uri=FolderDocuments.boundUri(context,grant);if(!"content".equals(uri.getScheme()))throw new IOException("Invalid document provider");
         if(operation.equals("copy")){
             File parent=new File(context.getFilesDir(),"original/attachments");if(!parent.isDirectory()&&!parent.mkdirs())throw new IOException("Attachment folder unavailable");
             String name=grant.optString("name","attachment").replaceAll("[^a-zA-Z0-9._ -]","_");if(name.length()>100)name=name.substring(name.length()-100);

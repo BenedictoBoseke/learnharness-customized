@@ -345,7 +345,7 @@ function AddProviderRow({
 				{addable.length > 0 && <span className="font-mono text-[11px]">{addable.length}</span>}
 			</button>
 			{open && (
-				<MenuShell
+				<MenuShell onDismiss={()=>setOpen(false)}
 					anchorRef={anchorRef}
 					testid="add-provider-menu"
 					preferredSide="down"

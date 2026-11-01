@@ -1,7 +1,7 @@
 /** Portable revision protocol. Native records remain the learning authority. */
 export type EntityMap = Record<string, string>;
 export interface SyncManifest {
-  version: 1;
+  version: 1 | 2;
   entries: EntityMap;
 }
 export interface RemoteRevision {
@@ -78,7 +78,7 @@ export function validateManifest(value: unknown): SyncManifest {
   if (
     !value ||
     typeof value !== "object" ||
-    (value as SyncManifest).version !== 1
+    ![1,2].includes((value as SyncManifest).version)
   )
     throw new Error(
       "This library uses an unsupported sync format. Update the app before syncing.",
@@ -93,18 +93,18 @@ export function validateManifest(value: unknown): SyncManifest {
     throw new Error("Invalid library manifest");
   for (const [key, hash] of Object.entries(entries))
     if (
-      (!/^(chat|job|file|document)\/[A-Za-z0-9_-]+$/.test(key) &&
+      (!/^(chat|job|file|document)\/[A-Za-z0-9_-]+$/.test(key) && !((value as SyncManifest).version===2 && /^workspace\/[A-Za-z0-9_-]+$/.test(key)) &&
         key !== "graph/family") ||
       typeof hash !== "string" ||
       !/^[a-f0-9]{64}$/.test(hash)
     )
       throw new Error("Invalid library entity");
-  return { version: 1, entries: { ...entries } };
+  return { version: (value as SyncManifest).version, entries: { ...entries } };
 }
 export function sameManifest(a: SyncManifest, b: SyncManifest): boolean {
   const keys = Object.keys(a.entries);
   return (
-    keys.length === Object.keys(b.entries).length &&
+    a.version===b.version && keys.length === Object.keys(b.entries).length &&
     keys.every((k) => a.entries[k] === b.entries[k])
   );
 }
@@ -134,6 +134,6 @@ export function reconcile(
     }
     if (chosen) entries[key] = chosen;
   }
-  return { manifest: { version: 1, entries }, conflicts: conflicts.sort() };
+  return { manifest: { version: base.version===2||local.version===2||remote.version===2?2:1, entries }, conflicts: conflicts.sort() };
 }
 export const EMPTY_MANIFEST: SyncManifest = { version: 1, entries: {} };

@@ -1,4 +1,6 @@
 "use client";
+import {SubjectsButton} from "./subjects";
+import {useDismissLayer} from "./dismiss-layer";
 import { MessageResponse } from "@/components/ai-elements/message";
 import { useCallback, useEffect, useState } from "react";
 import type { DocumentView, DocumentSyncMode } from "@/src/core";
@@ -48,6 +50,7 @@ export function LinkedDocumentsButton({ chatId }: { chatId: string }) {
       setError(e instanceof Error ? e.message : "Notes are unavailable");
     }
   }, [chatId]);
+  useDismissLayer(open, () => setOpen(false), '[data-testid="linked-documents-dialog"]');
   useEffect(() => {
     void load();
   }, [load]);
@@ -150,7 +153,7 @@ export function LinkedDocumentsButton({ chatId }: { chatId: string }) {
   }
   return (
     <>
-      {resume && (
+      <SubjectsButton chatId={chatId}/>{resume && (
         <button
           className="lh-no-drag rounded border border-border px-2 py-1 text-xs"
           data-testid="resume-synced-session"

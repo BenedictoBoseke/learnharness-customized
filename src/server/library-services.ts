@@ -13,13 +13,26 @@ import { extractionStatuses } from "../agent/subagents/extraction.ts";
 import { SyncEngine } from "./sync/engine.ts";
 import { SupabaseConnection } from "./sync/supabase.ts";
 import { linkedDocumentTools } from "../agent/tools/linked-document.ts";
+import { SubjectService } from "../store/subjects.ts";
+import { createFolderPort } from "../store/folder-access.ts";
+import { resolveSourcePath } from "../agent/tools/fs-shared.ts";
+import { subjectTurn } from "../agent/tools/subject.ts";
 function build() {
   const identity = deviceIdentity();
   let timer: ReturnType<typeof setTimeout> | undefined,
     ticking = false;
   let lastSync = 0;
-  const changed = () => {
-    emit("documents-changed", {});
+  let documentNotice: ReturnType<typeof setTimeout> | undefined;
+  let subjectNotice: ReturnType<typeof setTimeout> | undefined;
+  const changed = (documentId?: string) => {
+    if (documentId) subjects.noteChanged(documentId);
+    if (!documentNotice) {
+      documentNotice = setTimeout(() => {
+        documentNotice = undefined;
+        emit("documents-changed", {});
+      }, 80);
+      documentNotice.unref?.();
+    }
     schedule();
   };
   const rendererUrl = process.env.LH_ANDROID_RENDER_URL;
@@ -46,6 +59,28 @@ function build() {
       : path.join(PATHS.data, "attachments"),
     deviceId: identity.id,
   });
+  const subjects = new SubjectService({
+    watch: true,
+    dataDir: PATHS.data,
+    localDir: path.join(LOCAL_STATE_DIR, "subjects"),
+    documents,
+    folders: createFolderPort({
+      grantsFile: path.join(path.dirname(AUTH_FILE), "document-grants.json"),
+      androidUrl: rendererUrl,
+      androidToken: process.env.LH_ANDROID_RENDER_TOKEN,
+    }),
+    readChat: (id) => chatStore.getChat(id),
+    changed: () => {
+      if (!subjectNotice) {
+        subjectNotice = setTimeout(() => {
+          subjectNotice = undefined;
+          emit("subjects-changed", {});
+        }, 100);
+        subjectNotice.unref?.();
+      }
+      schedule();
+    },
+  });
   const attachmentRoot = replica.options.attachmentsDir;
   if (fs.existsSync(attachmentRoot)) {
     const visit = (dir: string) => {
@@ -63,6 +98,7 @@ function build() {
     path.join(path.dirname(AUTH_FILE), "learnharness-sync-auth.json"),
   );
   const busy = () =>
+    subjects.busy ||
     documents.busy ||
     replica.busy ||
     extractionStatuses().length > 0 ||
@@ -86,6 +122,7 @@ function build() {
     deviceName: identity.name,
     isBusy: busy,
     applied: () => {
+      emit("subjects-changed", {});
       emit("chats-changed", {});
       emit("sources-changed", {});
       emit("documents-changed", {});
@@ -160,6 +197,7 @@ function build() {
   return {
     identity,
     documents,
+    subjects,
     replica,
     auth,
     engine,
@@ -188,6 +226,7 @@ export function libraryServices() {
 export function documentToolsForSession(chatId: string) {
   if (!fs.existsSync(path.join(PATHS.data, "documents"))) return undefined;
   const s = libraryServices();
+  if (s.subjects.forChat(chatId)) return undefined;
   const linked = s.documents
     .records()
     .filter((d) => d.chatIds.includes(chatId));
@@ -213,6 +252,32 @@ export function documentToolsForSession(chatId: string) {
     propose: (id, revision, before, after, reason) =>
       s.documents.propose(id, chatId, revision, before, after, reason),
   });
+}
+export function subjectSourceGuard(chatId: string) {
+  if (!fs.existsSync(path.join(PATHS.data, "workspaces"))) return undefined;
+  const s = libraryServices(),
+    w = s.subjects.forChat(chatId);
+  if (!w) return undefined;
+  return (raw: string) => {
+    const file = resolveSourcePath(raw);
+    return (
+      s.replica.permitsSourceRead(file) ||
+      s.documents.permitsSourceRead(
+        file,
+        chatId,
+        new Set(w.notes.map((n) => n.id)),
+      )
+    );
+  };
+}
+export async function subjectContextForSession(
+  chatId: string,
+  query: string,
+  budget: number,
+) {
+  if (!fs.existsSync(path.join(PATHS.data, "workspaces")))
+    return { tools: [], context: "" };
+  return subjectTurn(libraryServices().subjects, chatId, query, budget);
 }
 export function sessionResumeRequired(chatId: string) {
   if (!fs.existsSync(path.join(SYNC_LOCAL_DIR, "state.json"))) return false;

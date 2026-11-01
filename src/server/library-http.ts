@@ -3,7 +3,7 @@ import { subscriptionRequestOrigin } from "./web-subscription-http.ts";
 import { libraryServices } from "./library-services.ts";
 const json = (value: unknown, status = 200) =>
   Response.json(value, { status, headers: { "cache-control": "no-store" } });
-function trusted(r: Request) {
+export function trusted(r: Request) {
   return (
     r.headers.get("sec-fetch-site") !== "cross-site" &&
     desktopAPIAuthorized(r.headers) &&
@@ -12,7 +12,7 @@ function trusted(r: Request) {
         r.headers.get("sec-fetch-site") !== "cross-site"))
   );
 }
-async function body(r: Request) {
+export async function body(r: Request) {
   if (r.headers.get("content-type")?.split(";")[0] !== "application/json")
     throw new Error("Expected a JSON request");
   const reader = r.body?.getReader();

@@ -236,7 +236,7 @@ export function AppearanceSection({
 						);
 					})()}
 					{fontMenuOpen && (
-						<MenuShell
+						<MenuShell onDismiss={()=>setFontMenuOpen(false)}
 							preferredSide="down"
 							anchorTestid="font-trigger"
 							testid="font-menu"

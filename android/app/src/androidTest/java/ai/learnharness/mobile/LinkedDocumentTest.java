@@ -21,9 +21,9 @@ import java.util.concurrent.TimeUnit;
 
 /** Real system picker -> persisted URI -> embedded Node -> original provider file. */
 public final class LinkedDocumentTest extends LibraryRestoreTest {
- private Context app;private MainActivity activity;private WebView web;private JSONObject runtime;private String phase;private boolean originalSuite;
- public void onCreate(Bundle args){phase=args==null?"first":args.getString("phase","first");String suite=args==null?"":args.getString("suite","");originalSuite=suite.equals("lifecycle")||suite.equals("restore");super.onCreate(args);}
- public void onStart(){if(originalSuite){super.onStart();return;}Bundle b=new Bundle();try{test();b.putString("stream","Linked document "+phase+": PASS\n");finish(-1,b);}catch(Throwable e){b.putString("stream","Linked document "+phase+": FAIL "+e.getClass().getSimpleName()+": "+e.getMessage()+"\n");finish(0,b);}}
+ private Context app;private MainActivity activity;private WebView web;private JSONObject runtime;private String phase;private boolean originalSuite,subjectSuite;
+ public void onCreate(Bundle args){phase=args==null?"first":args.getString("phase","first");String suite=args==null?"":args.getString("suite","");subjectSuite=suite.equals("subjects");originalSuite=suite.equals("lifecycle")||suite.equals("restore");super.onCreate(args);}
+ public void onStart(){if(originalSuite){super.onStart();return;}Bundle b=new Bundle();try{if(subjectSuite)new SubjectFolderTest(this,phase).run();else test();b.putString("stream","Linked document "+phase+": PASS\n");finish(-1,b);}catch(Throwable e){b.putString("stream","Linked document "+phase+": FAIL "+e.getClass().getSimpleName()+": "+e.getMessage()+"\n");finish(0,b);}}
  private void test()throws Exception{
   check(Build.HARDWARE.contains("ranchu")||Build.HARDWARE.contains("goldfish"),"Disposable emulator required");app=getTargetContext();
   Intent launch=app.getPackageManager().getLaunchIntentForPackage(app.getPackageName());launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK);activity=(MainActivity)startActivitySync(launch);

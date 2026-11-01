@@ -165,6 +165,9 @@ public final class RuntimeService extends Service {
         for(File candidate:abandoned){
             if(destroying)throw new IOException("Engine stopped");
             if(candidate.getName().matches("engine-[0-9]+-extract-[a-f0-9-]{36}"))deleteRuntimeTree(parent,candidate);
+            // Installed APK upgrades retire the old engine process. These are
+            // reconstructible bundles only; original files/auth/grants are elsewhere.
+            else if(candidate.getName().matches("engine-[0-9]+")&&!candidate.getName().equals("engine-"+BuildConfig.VERSION_CODE))deleteRuntimeTree(parent,candidate);
         }
         String version="engine-"+BuildConfig.VERSION_CODE;
         File target=new File(parent,version);

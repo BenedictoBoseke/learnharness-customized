@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { atomicWrite, readJson } from "./atomic-json.ts";
+import { grantedFile } from "./folder-access.ts";
 import {
   replaceExact,
   type DocumentBinding,
@@ -36,7 +37,7 @@ export interface DocumentServiceOptions {
   androidUrl?: string;
   androidToken?: string;
   readChat: (id: string) => ChatRecord | null;
-  changed?: () => void;
+  changed?: (documentId?: string) => void;
 }
 const safeId = (id: string) => {
   if (!/^[A-Za-z0-9_-]{1,100}$/.test(id))
@@ -78,7 +79,7 @@ export class DocumentService {
   }
   private save(d: DocumentRecord) {
     atomicWrite(this.file(d.id), JSON.stringify(d, null, 2));
-    this.options.changed?.();
+    this.options.changed?.(d.id);
   }
   private bindings() {
     return readJson<Record<string, Binding>>(
@@ -115,9 +116,7 @@ export class DocumentService {
   }
   private grant(handle: string): Grant {
     safeId(handle);
-    const grant = readJson<Record<string, Grant>>(this.options.grantsFile, {})[
-      handle
-    ];
+    const grant = grantedFile(this.options.grantsFile, handle);
     if (!grant || typeof grant.path !== "string")
       throw new Error("The file permission is missing. Relink the document.");
     return grant;
@@ -380,14 +379,16 @@ export class DocumentService {
   }
   async link(input: {
     documentId?: string;
-    chatId: string;
+    registerId?: string;
+    chatId?: string;
     name: string;
     handle: string;
     kind: "desktop" | "android";
     writable: boolean;
     mode: DocumentSyncMode;
+    logging?: boolean;
   }): Promise<DocumentView> {
-    if (!this.options.readChat(input.chatId))
+    if (input.chatId && !this.options.readChat(input.chatId))
       throw new Error("Session not found");
     if (
       (input.kind !== "desktop" && input.kind !== "android") ||
@@ -395,10 +396,10 @@ export class DocumentService {
     )
       throw new Error("Invalid document binding");
     safeId(input.handle);
-    const alreadyLinked = this.records().find((record) => {
-      const binding = this.binding(record.id);
-      return binding?.kind === input.kind && binding.handle === input.handle;
-    });
+    const alreadyId = Object.entries(this.bindings()).find(
+      ([, b]) => b.kind === input.kind && b.handle === input.handle,
+    )?.[0];
+    const alreadyLinked = alreadyId ? this.record(alreadyId) : undefined;
     if (
       input.documentId &&
       alreadyLinked &&
@@ -409,7 +410,10 @@ export class DocumentService {
       );
     const id = input.documentId
       ? safeId(input.documentId)
-      : alreadyLinked?.id || "doc_" + crypto.randomUUID().replaceAll("-", "");
+      : alreadyLinked?.id ||
+        (input.registerId
+          ? safeId(input.registerId)
+          : "doc_" + crypto.randomUUID().replaceAll("-", ""));
     return this.lock(id, async () => {
       const binding: Binding = {
         documentId: id,
@@ -422,21 +426,29 @@ export class DocumentService {
         throw new Error("Select a UTF-8 Markdown document.");
       const now = new Date().toISOString();
       const existing =
-        input.documentId || alreadyLinked ? this.record(id) : null;
+        input.documentId || alreadyLinked || fs.existsSync(this.file(id))
+          ? this.record(id)
+          : null;
       const d: DocumentRecord = existing || {
         version: 1,
         id,
         name: input.name.slice(0, 200) || "Learning note.md",
         chatIds: [],
         mode: input.mode,
-        logging: true,
+        logging: input.logging ?? true,
         text,
         revision: textHash(text),
         updatedAt: now,
         blockHashes: {},
         proposals: [],
       };
-      d.chatIds = Array.from(new Set([...d.chatIds, input.chatId]));
+      if (existing && existing.mode !== input.mode)
+        throw Error(
+          "This note already has another sync owner. Reconcile its mode before linking.",
+        );
+      d.chatIds = Array.from(
+        new Set([...d.chatIds, ...(input.chatId ? [input.chatId] : [])]),
+      );
       binding.lastWrittenRevision = textHash(text);
       this.saveBinding(binding);
       if (
@@ -479,6 +491,80 @@ export class DocumentService {
       return this.view(d);
     });
   }
+  async associate(id: string, chatId: string) {
+    if (!this.options.readChat(chatId)) throw Error("Session not found");
+    return this.lock(id, async () => {
+      const d = this.record(id);
+      if (!d.chatIds.includes(chatId)) {
+        d.chatIds.push(chatId);
+        this.save(d);
+      }
+      return this.view(d);
+    });
+  }
+  permitsSourceRead(file: string, chatId: string, excludedIds: Set<string>) {
+    try {
+      const canonical = fs.realpathSync(file);
+      for (const d of this.records()) {
+        if (!d.chatIds.includes(chatId) || excludedIds.has(d.id)) continue;
+        const b = this.binding(d.id);
+        if (
+          b?.kind === "desktop" &&
+          fs.realpathSync(this.grant(b.handle).path) === canonical
+        )
+          return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+  boundHandle(id:string){const b=this.binding(id);return b?{handle:b.handle,kind:b.kind}:undefined;}
+  async inspect(pick: {
+    kind: "desktop" | "android";
+    handle: string;
+    writable: boolean;
+  }) {
+    const text = await this.nativeRead({ ...pick, documentId: "inspection" });
+    return { text, revision: textHash(text) };
+  }
+  async setMode(id: string, mode: DocumentSyncMode) {
+    return this.lock(id, async () => {
+      const d = this.record(id);
+      d.mode = mode;
+      this.save(d);
+      return this.view(d);
+    });
+  }
+  /** A completed subject lesson owns one append-only block, not the live transcript logger. */
+  async appendLesson(id: string, lessonId: string, markdown: string) {
+    safeId(lessonId);
+    return this.lock(id, async () => {
+      const d = await this.refresh(this.record(id));
+      if (d.error) throw Error(d.error);
+      const marker = `<!--lh:lesson:${lessonId}-->`,
+        end = `<!--/lh:lesson:${lessonId}-->`;
+      if (d.text.includes(marker)) {
+        if (!d.text.includes(end))
+          throw Error("Lesson block was edited; review the original note.");
+        return this.view(d);
+      }
+      const b = this.binding(id);
+      if (!b) throw Error("Relink the lesson log on this device.");
+      const eol = d.text.includes("\r\n") ? "\r\n" : "\n";
+      const block = [marker, markdown.replace(/\r?\n/g, eol), end].join(eol);
+      const text =
+        d.text + (d.text.endsWith(eol) ? eol : eol + eol) + block + eol;
+      const next = {
+        ...structuredClone(d),
+        text,
+        revision: textHash(text),
+        updatedAt: new Date().toISOString(),
+      };
+      await this.commitText(d, next, b, d.revision);
+      return this.view(next);
+    });
+  }
   async unlink(id: string, chatId: string) {
     return this.lock(id, async () => {
       const d = this.record(id);
@@ -515,6 +601,15 @@ export class DocumentService {
         throw new Error(
           "Include nearby unchanged text in the replacement so a deletion can be safely undone.",
         );
+      const duplicate = d.proposals.find(
+        (p) =>
+          p.status === "pending" &&
+          p.chatId === chatId &&
+          p.baseRevision === baseRevision &&
+          p.before === before &&
+          p.after === after,
+      );
+      if (duplicate) return duplicate;
       const proposal: DocumentProposal = {
         id: "edit_" + crypto.randomUUID().replaceAll("-", ""),
         documentId: id,

@@ -71,7 +71,7 @@ function DictationLanguagePicker({ preference, disabled }: {
 				className="min-w-20 max-w-[65%]"
 			/>
 		</Hint>
-		{open && !disabled && <MenuShell
+		{open && !disabled && <MenuShell onDismiss={()=>setOpen(false)}
 			anchorRef={triggerRef}
 			testid="dictation-language-menu"
 			preferredSide="down"

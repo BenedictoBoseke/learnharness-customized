@@ -16,6 +16,34 @@ const session = (access = "fixture-access", expires = 3600) => ({
   user,
 });
 test(
+  "server Retry-After persists across reload while unused email links remain verifiable",
+  fixture(async (file) => {
+    let sends = 0;
+    const fetcher = (async (url: RequestInfo | URL) => {
+      if (String(url).endsWith("/otp")) {
+        sends++;
+        return new Response(
+          JSON.stringify({ message: "email rate limit exceeded" }),
+          { status: 429, headers: { "retry-after": "120" } },
+        );
+      }
+      return Response.json(session());
+    }) as typeof fetch;
+    const first = new SupabaseConnection(file, fetcher);
+    first.configure("https://fixture.supabase.co", "sb_publishable_fixture");
+    await assert.rejects(first.requestCode(user.email), /limiting/);
+    const reloaded = new SupabaseConnection(file, fetcher);
+    assert.ok(reloaded.status().emailRetryAt! > Date.now());
+    await assert.rejects(reloaded.requestCode(user.email), /wait/);
+    assert.equal(sends, 1);
+    await reloaded.verifyCode(
+      user.email,
+      `https://fixture.supabase.co/auth/v1/verify?token=${"a".repeat(64)}&type=magiclink`,
+    );
+    assert.equal(reloaded.status().signedIn, true);
+  }),
+);
+test(
   "default Free-plan email links verify directly without following redirects or exposing hashes",
   fixture(async (file) => {
     const hash = "a".repeat(64);
@@ -75,6 +103,15 @@ function fixture(fn: (file: string) => Promise<void>) {
     }
   };
 }
+test("overlapping sign-in requests send only one email",fixture(async file=>{
+  let release!:()=>void, sends=0;
+  const wait=new Promise<void>(r=>release=r);
+  const c=new SupabaseConnection(file,(async()=>{sends++;await wait;return Response.json({});}) as typeof fetch);
+  c.configure("https://fixture.supabase.co","sb_publishable_fixture");
+  const pending=c.requestCode(user.email);
+  await assert.rejects(c.requestCode(user.email),/already in progress/);
+  release();await pending;assert.equal(sends,1);
+}));
 test(
   "only a publishable project key is accepted; account credentials never enter public status",
   fixture(async (file) => {
